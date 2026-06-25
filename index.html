@@ -6,30 +6,30 @@
     <title>デジタル暗記ノートアプリ (完全フィット版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* 拡大・縮小されても絶対に枠からはみ出さないためのコンテナ制御 */
-        .workspace-area {
+        /* 💡 どんな画像サイズでも親要素の枠内に100%収めるためのマジックCSS */
+        .canvas-container {
             position: relative;
-            width: 100%;
-            height: 60vh;
-            min-height: 400px;
-            max-height: 650px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            max-width: 100%;
+            max-height: 65vh; /* 画面の高さに応じてはみ出さないように制限 */
         }
-        /* Canvasの等倍表示バグを防ぎ、アスペクト比を維持して最大表示 */
         #originalCanvas {
             max-width: 100%;
-            max-height: 100%;
+            max-height: 65vh;
             width: auto;
             height: auto;
             display: block;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            background-color: #ffffff;
+            object-fit: contain;
         }
         #maskCanvas {
             position: absolute;
             top: 0;
             left: 0;
-            display: block;
+            /* 元画の縮小率に完全に同期させる */
+            width: 100%;
+            height: 100%;
             cursor: pointer;
         }
     </style>
@@ -45,7 +45,7 @@
         </button>
     </header>
 
-    <main class="max-w-6xl mx-auto p-4 md:p-6">
+    <main class="max-w-5xl mx-auto p-4 md:p-6">
         
         <section id="screenList">
             <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
@@ -59,8 +59,8 @@
             </div>
         </section>
 
-        <section id="screenEdit" class="hidden fixed inset-0 bg-black/60 z-20 flex items-center justify-center p-2 md:p-4">
-            <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] flex flex-col overflow-hidden">
+        <section id="screenEdit" class="hidden fixed inset-0 bg-black/60 z-20 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden animate-fade-in">
                 
                 <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <input type="text" id="noteTitle" placeholder="ノートのタイトルを入力..." class="text-lg font-bold bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-0.5 w-2/3 transition-all">
@@ -109,17 +109,14 @@
                         </div>
                     </div>
 
-                    <div class="flex-1 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative min-h-[350px]">
-                        
-                        <div id="canvasWrapper" class="workspace-area hidden flex items-center justify-center">
+                    <div class="flex-1 min-h-[350px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative">
+                        <div id="canvasWrapper" class="canvas-container hidden">
                             <canvas id="originalCanvas"></canvas>
                             <canvas id="maskCanvas"></canvas>
                         </div>
-
                         <div id="canvasPlaceholder" class="text-slate-400 text-sm text-center">
                             <p class="text-3xl mb-1">🖼️</p>
                             <p>画像を選択するとここに表示されます</p>
-                            <p class="text-xs text-slate-400 mt-1">※どんなサイズの画像も自動で枠に収まります</p>
                         </div>
                     </div>
 
@@ -140,18 +137,22 @@
     </main>
 
     <script>
-        // --- 1. クラス：ノート (Note) ---
+        // --- 1. ノートモデル（CRUD管理） ---
         class Note {
             constructor(id, imageSrc, maskSrc, title, createdAt, hiddenColors) {
                 this.id = id || Date.now();
-                this.imageSrc = imageSrc; // 画像パス (DataURL)
-                this.maskSrc = maskSrc;   // マスク画像パス (DataURL)
+                this.imageSrc = imageSrc; 
+                this.maskSrc = maskSrc;   
                 this.title = title || "無題のノート";
                 this.createdAt = createdAt || new Date().toLocaleString('ja-JP', { hour12: false });
-                this.hiddenColors = hiddenColors || ['red']; // 隠す色リスト
+                this.hiddenColors = hiddenColors || ['red'];
             }
 
-            // 保存する()
+            static getAll() {
+                const data = localStorage.getItem('digital_memorize_notes_v3');
+                return data ? JSON.parse(data) : [];
+            }
+
             static save(noteInstance) {
                 const notes = Note.getAll();
                 const idx = notes.findIndex(n => n.id === noteInstance.id);
@@ -160,26 +161,18 @@
                 } else {
                     notes.push(noteInstance);
                 }
-                localStorage.setItem('digital_memorize_notes_v4', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
             }
 
-            // 削除する()
             static delete(id) {
                 let notes = Note.getAll();
                 notes = notes.filter(n => n.id !== id);
-                localStorage.setItem('digital_memorize_notes_v4', JSON.stringify(notes));
-            }
-
-            static getAll() {
-                const data = localStorage.getItem('digital_memorize_notes_v4');
-                return data ? JSON.parse(data) : [];
+                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
             }
         }
 
-        // --- 2. クラス：画像処理エンジン (ImageProcessingEngine) ---
+        // --- 2. 画像処理エンジン（文字抹消＆輪郭膨張処理） ---
         class ImageProcessingEngine {
-            
-            // 色判定(ピクセル, 目標色)
             static checkColor(r, g, b, targetColor) {
                 if (targetColor === 'red') {
                     return (r > g + 25 && r > b + 25 && r > 60);
@@ -193,7 +186,6 @@
                 return false;
             }
 
-            // マスク処理実行(画像, 指定色)
             static generateMaskCanvas(originalCanvas, targetColor) {
                 const width = originalCanvas.width;
                 const height = originalCanvas.height;
@@ -221,14 +213,14 @@
                     }
                 }
                 
-                // 周囲を巻き込んでマスク（膨張処理）
+                // 周囲を巻き込んで白消し（膨張処理）
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         const idx = y * width + x;
                         let shouldMask = false;
                         
-                        for (let dy = -2; dy <= 2; dy++) {
-                            for (let dx = -2; dx <= 2; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
                                 const nx = x + dx;
                                 const ny = y + dy;
                                 if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
@@ -246,9 +238,9 @@
                             dst[dIdx] = 255;   
                             dst[dIdx+1] = 255; 
                             dst[dIdx+2] = 255; 
-                            dst[dIdx+3] = 255; // 白不透明で上書きして消す
+                            dst[dIdx+3] = 255; 
                         } else {
-                            dst[dIdx+3] = 0;   // 透明
+                            dst[dIdx+3] = 0;   
                         }
                     }
                 }
@@ -257,7 +249,6 @@
                 return maskCanvas;
             }
 
-            // タップされた部分のマスク開閉処理 (塗りつぶしアルゴリズム)
             static toggleMaskAtPoint(maskCanvas, baseMaskCtx, startX, startY) {
                 const width = maskCanvas.width;
                 const height = maskCanvas.height;
@@ -309,7 +300,7 @@
             }
         }
 
-        // --- 3. クラス：画面 (AppScreen) ---
+        // --- 3. 画面・UIアプリケーション状態制御 ---
         class AppScreen {
             constructor() {
                 this.currentNote = null;
@@ -349,30 +340,7 @@
                     radio.addEventListener('change', () => this.onColorSelect());
                 });
                 
-                // マスクタップ時処理()
                 this.maskCanvas.addEventListener('click', (e) => this.onMaskTap(e));
-
-                // ウィンドウサイズが変わった際にもズレを防止するため同期する
-                window.addEventListener('resize', () => {
-                    if (!this.canvasWrapper.classList.contains('hidden')) {
-                        this.syncCanvasDisplaySize();
-                    }
-                });
-            }
-
-            // 💡 超重要: 表示上のCanvasサイズを完全に同期させ、はみ出しを防ぐメソッド
-            syncCanvasDisplaySize() {
-                // originalCanvasがCSS（max-width/max-height）によって実際に描画されている幅・高さを取得
-                const renderedWidth = this.origCanvas.clientWidth;
-                const renderedHeight = this.origCanvas.clientHeight;
-
-                // 上に重なるmaskCanvasのCSS表示サイズを、元のCanvasの実際の表示サイズと1ミリの狂いもなく一致させる
-                this.maskCanvas.style.width = renderedWidth + 'px';
-                this.maskCanvas.style.height = renderedHeight + 'px';
-
-                // 親ラッパーのサイズも追従させる
-                this.canvasWrapper.style.width = renderedWidth + 'px';
-                this.canvasWrapper.style.height = renderedHeight + 'px';
             }
 
             renderList() {
@@ -391,7 +359,7 @@
                     card.innerHTML = `
                         <div class="aspect-video bg-slate-100 relative cursor-pointer overflow-hidden group">
                             <img src="${note.imageSrc}" class="w-full h-full object-cover">
-                            <img src="${note.maskSrc}" class="w-full h-full object-cover absolute top-0 left-0 opacity-90 group-hover:opacity-40 transition-opacity">
+                            <img src="${note.maskSrc}" class="w-full h-full object-cover absolute top-0 left-0 opacity-90 group-hover:opacity-50 transition-opacity">
                             <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm">
                                 📖 復習を始める
                             </div>
@@ -468,8 +436,8 @@
                 reader.onload = (event) => {
                     const img = new Image();
                     img.onload = () => {
-                        // 内部解像度の過度な肥大化を防ぐ（最大幅1200pxに制限しつつ比率維持）
-                        const MAX_WIDTH = 1200;
+                        // 解像度の上限を設定（比率は維持）
+                        const MAX_WIDTH = 800;
                         let width = img.width;
                         let height = img.height;
 
@@ -487,7 +455,6 @@
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
 
-                        // 色選択処理・マスク生成へ移行
                         this.onColorSelect();
                     };
                     img.src = event.target.result;
@@ -495,14 +462,12 @@
                 reader.readAsDataURL(file);
             }
 
-            // 色選択処理()
             onColorSelect() {
                 if (this.canvasWrapper.classList.contains('hidden')) return;
 
                 const targetColor = document.querySelector('input[name="targetColor"]:checked').value;
                 this.currentNote.hiddenColors = [targetColor];
 
-                // 画像処理エンジンを呼び出してマスクを生成
                 const generatedMask = ImageProcessingEngine.generateMaskCanvas(this.origCanvas, targetColor);
                 
                 this.maskCanvas.width = generatedMask.width;
@@ -510,17 +475,12 @@
                 const maskCtx = this.maskCanvas.getContext('2d');
                 maskCtx.drawImage(generatedMask, 0, 0);
 
-                // ベースとなるマスクの状態を保持
                 this.baseMaskCanvas = document.createElement('canvas');
                 this.baseMaskCanvas.width = generatedMask.width;
                 this.baseMaskCanvas.height = generatedMask.height;
                 this.baseMaskCanvas.getContext('2d').drawImage(generatedMask, 0, 0);
-
-                // 画面サイズへの同期を即座に実行
-                setTimeout(() => this.syncCanvasDisplaySize(), 50);
             }
 
-            // 画像表示() - 保存データから復元
             displayImageFromSrc(imgSrc, maskSrc) {
                 const img = new Image();
                 img.onload = () => {
@@ -539,33 +499,23 @@
 
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
-
-                        // 画面サイズへの同期を実行
-                        setTimeout(() => this.syncCanvasDisplaySize(), 50);
                     };
                     mask.src = maskSrc;
                 };
                 img.src = imgSrc;
             }
 
-            // マスクタップ時処理()
             onMaskTap(e) {
+                // 💡 CSSで伸縮された表示上のサイズと、内部の実解像度のズレを高度に計算・補正するロジック
                 const rect = this.maskCanvas.getBoundingClientRect();
-                
-                // 💡 CSSで縮小表示されたサイズと、Canvasの内部解像度(ピクセル数)の比率を計算
                 const scaleX = this.maskCanvas.width / rect.width;
                 const scaleY = this.maskCanvas.height / rect.height;
 
-                // 表示上のタップ座標から、Canvas内部の正確なピクセル座標へと逆算
                 const clickX = Math.floor((e.clientX - rect.left) * scaleX);
                 const clickY = Math.floor((e.clientY - rect.top) * scaleY);
 
-                // 範囲外チェック
-                if (clickX < 0 || clickX >= this.maskCanvas.width || clickY < 0 || clickY >= this.maskCanvas.height) return;
-
                 const baseMaskCtx = this.baseMaskCanvas.getContext('2d');
 
-                // 開閉処理の実行
                 ImageProcessingEngine.toggleMaskAtPoint(
                     this.maskCanvas, 
                     baseMaskCtx, 
@@ -581,10 +531,9 @@
                 }
 
                 this.currentNote.title = this.noteTitle.value.trim() || "無題のノート";
-                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.8);
+                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.75);
                 this.currentNote.maskSrc = this.maskCanvas.toDataURL('image/png');
 
-                // ノートデータを保存
                 Note.save(this.currentNote);
 
                 this.closeEditScreen();
