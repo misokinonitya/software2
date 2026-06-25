@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタル暗記ノートアプリ</title>
+    <title>デジタル暗記ノートアプリ (文字消去版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         /* キャンバスを重ねるためのスタイル */
@@ -23,11 +23,11 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen font-sans">
 
-    <header class="bg-blue-600 text-white shadow-md p-4 sticky top-0 z-10 flex justify-between items-center">
+    <header class="bg-indigo-600 text-white shadow-md p-4 sticky top-0 z-10 flex justify-between items-center">
         <h1 class="text-xl font-bold flex items-center gap-2">
             <span>📝</span> デジタル暗記ノート
         </h1>
-        <button id="btnNewNote" class="bg-white text-blue-600 font-bold px-4 py-2 rounded-full shadow hover:bg-blue-50 transition-all text-sm flex items-center gap-1">
+        <button id="btnNewNote" class="bg-white text-indigo-600 font-bold px-4 py-2 rounded-full shadow hover:bg-indigo-50 transition-all text-sm flex items-center gap-1">
             ➕ 新規ノート
         </button>
     </header>
@@ -50,7 +50,7 @@
             <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
                 
                 <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <input type="text" id="noteTitle" placeholder="ノートのタイトルを入力..." class="text-lg font-bold bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-1 py-0.5 w-2/3 transition-all">
+                    <input type="text" id="noteTitle" placeholder="ノートのタイトルを入力..." class="text-lg font-bold bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-0.5 w-2/3 transition-all">
                     <span id="noteDate" class="text-xs text-slate-400"></span>
                 </div>
 
@@ -58,40 +58,41 @@
                     
                     <div class="w-full md:w-64 flex flex-col gap-4 shrink-0">
                         
-                        <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-blue-400 transition-all bg-slate-50 relative">
+                        <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-indigo-400 transition-all bg-slate-50 relative">
                             <input type="file" id="fileInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                             <div class="text-slate-500 text-sm pointer-events-none">
                                 <p class="text-2xl mb-1">📷</p>
-                                <p class="font-semibold text-blue-600">写真を撮影 / 選択</p>
+                                <p class="font-semibold text-indigo-600">写真を撮影 / 選択</p>
                                 <p class="text-xs text-slate-400 mt-1">アルバムまたはカメラ起動</p>
                             </div>
                         </div>
 
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">1. 隠す色の選択</h3>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">1. 消す（隠す）色の選択</h3>
                             <div class="flex flex-col gap-2">
                                 <label class="flex items-center gap-3 p-2 rounded hover:bg-slate-100 cursor-pointer text-sm">
-                                    <input type="radio" name="targetColor" value="blue" checked class="w-4 h-4 text-blue-600">
-                                    <span class="w-4 h-4 rounded-full bg-blue-600 inline-block"></span>
-                                    <span>青ペンを隠す</span>
+                                    <input type="radio" name="targetColor" value="red" checked class="w-4 h-4 text-red-600">
+                                    <span class="w-4 h-4 rounded-full bg-red-500 inline-block"></span>
+                                    <span>赤ペンを消す</span>
                                 </label>
                                 <label class="flex items-center gap-3 p-2 rounded hover:bg-slate-100 cursor-pointer text-sm">
-                                    <input type="radio" name="targetColor" value="red" class="w-4 h-4 text-red-600">
-                                    <span class="w-4 h-4 rounded-full bg-red-500 inline-block"></span>
-                                    <span>赤ペンを隠す</span>
+                                    <input type="radio" name="targetColor" value="blue" class="w-4 h-4 text-blue-600">
+                                    <span class="w-4 h-4 rounded-full bg-blue-600 inline-block"></span>
+                                    <span>青ペンを消す</span>
                                 </label>
                                 <label class="flex items-center gap-3 p-2 rounded hover:bg-slate-100 cursor-pointer text-sm">
                                     <input type="radio" name="targetColor" value="green" class="w-4 h-4 text-green-600">
                                     <span class="w-4 h-4 rounded-full bg-green-500 inline-block"></span>
-                                    <span>緑ペンを隠す</span>
+                                    <span>緑ペンを消す</span>
                                 </label>
                             </div>
                         </div>
 
-                        <div class="bg-blue-50 text-blue-800 p-3 rounded-xl text-xs leading-relaxed border border-blue-100">
-                            <p class="font-bold mb-1">💡 使い方ガイド</p>
-                            <p>① 写真を選び、隠したい色を指定します。</p>
-                            <p>② 自動生成された<span class="text-red-500 font-bold">赤色マスク</span>部分をタップすると、その文字だけが開閉します！</p>
+                        <div class="bg-indigo-50 text-indigo-800 p-3 rounded-xl text-xs leading-relaxed border border-indigo-100">
+                            <p class="font-bold mb-1">💡 新・使い方ガイド</p>
+                            <p>① 写真を選び、消したい文字の色を指定します。</p>
+                            <p>② 指定した色の文字がノートの背景（白）と同化して<span class="text-emerald-600 font-bold">完全に消えます</span>。</p>
+                            <p>③ 文字が消えた部分をタップすると、その部分だけ文字が一時的に<span class="text-indigo-600 font-bold">再表示（開閉）</span>されます！</p>
                         </div>
                     </div>
 
@@ -112,7 +113,7 @@
                     <button id="btnCancel" class="px-5 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-200 transition-all">
                         キャンセル
                     </button>
-                    <button id="btnSave" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow hover:bg-blue-700 transition-all">
+                    <button id="btnSave" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow hover:bg-indigo-700 transition-all">
                         💾 ノートを保存
                     </button>
                 </div>
@@ -124,19 +125,19 @@
 
     <script>
         
-        // --- 1. クラス図：ノートモデル（CRUD管理） ---
+        // --- 1. ノートモデル（CRUD管理） ---
         class Note {
             constructor(id, imageSrc, maskSrc, title, createdAt, hiddenColors) {
                 this.id = id || Date.now();
                 this.imageSrc = imageSrc; // Base64原画データ
-                this.maskSrc = maskSrc;   // Base64編集済マスクデータ
+                this.maskSrc = maskSrc;   // Base64編集済マスクデータ（白消しレイヤー）
                 this.title = title || "無題のノート";
                 this.createdAt = createdAt || new Date().toLocaleString('ja-JP', { hour12: false });
-                this.hiddenColors = hiddenColors || ['blue'];
+                this.hiddenColors = hiddenColors || ['red'];
             }
 
             static getAll() {
-                const data = localStorage.getItem('digital_memorize_notes');
+                const data = localStorage.getItem('digital_memorize_notes_v2');
                 return data ? JSON.parse(data) : [];
             }
 
@@ -148,35 +149,37 @@
                 } else {
                     notes.push(noteInstance);
                 }
-                localStorage.setItem('digital_memorize_notes', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v2', JSON.stringify(notes));
             }
 
             static delete(id) {
                 let notes = Note.getAll();
                 notes = notes.filter(n => n.id !== id);
-                localStorage.setItem('digital_memorize_notes', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v2', JSON.stringify(notes));
             }
         }
 
-        // --- 2. クラス図：画像処理エンジン ---
+        // --- 2. 画像処理エンジン（文字抹消＆輪郭膨張処理） ---
         class ImageProcessingEngine {
             
-            // 色判定(ピクセル, 目標色)
+            // 精密な色判定（RGB値の差分としきい値）
             static checkColor(r, g, b, targetColor) {
-                // 各色のRGB特性に応じた高精度なしきい値判定
-                if (targetColor === 'blue') {
-                    return (b > r + 35 && b > g + 35 && b > 70); // 青成分が他より有意に高い
-                }
                 if (targetColor === 'red') {
-                    return (r > g + 40 && r > b + 40 && r > 70); // 赤成分が他より有意に高い
+                    // 赤文字: RがG、Bより明らかに高く、かつ一定以上の鮮やかさを持つ
+                    return (r > g + 25 && r > b + 25 && r > 60);
+                }
+                if (targetColor === 'blue') {
+                    // 青文字: BがR、Gより明らかに高い
+                    return (b > r + 25 && b > g + 20 && b > 60);
                 }
                 if (targetColor === 'green') {
-                    return (g > r + 25 && g > b + 25 && g > 70); // 緑成分が他より有意に高い
+                    // 緑文字: GがR、Bより明らかに高い
+                    return (g > r + 20 && g > b + 15 && g > 60);
                 }
                 return false;
             }
 
-            // マスク処理実行(画像, 指定色)
+            // 指定した文字色を検出し、「白（背景色）」で完全に消し去るマスク画像を生成
             static generateMaskCanvas(originalCanvas, targetColor) {
                 const width = originalCanvas.width;
                 const height = originalCanvas.height;
@@ -194,19 +197,50 @@
                 const src = imgData.data;
                 const dst = maskImgData.data;
                 
+                // 1次判定（ターゲットカラーのピクセルマップを作成）
+                const hitMap = new Uint8Array(width * height);
                 for (let i = 0; i < src.length; i += 4) {
                     const r = src[i];
                     const g = src[i+1];
                     const b = src[i+2];
+                    const pixelIdx = i / 4;
                     
                     if (this.checkColor(r, g, b, targetColor)) {
-                        // 条件に合致したピクセルに赤色マスク（暗記シート風）を被せる
-                        dst[i] = 239;     // R
-                        dst[i+1] = 68;    // G
-                        dst[i+2] = 68;    // B
-                        dst[i+3] = 255;   // A (不透明度：完全不透明)
-                    } else {
-                        dst[i+3] = 0;     // それ以外は完全透明
+                        hitMap[pixelIdx] = 1;
+                    }
+                }
+                
+                // 2次処理：文字のフチ（アンチエイリアス）の残り赤みを防ぐため、周囲1pxを巻き込んで「膨張（Dilation）」させる
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const idx = y * width + x;
+                        let shouldMask = false;
+                        
+                        // 自分自身と周囲3x3ピクセルをスキャン
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const nx = x + dx;
+                                const ny = y + dy;
+                                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                    if (hitMap[ny * width + nx]) {
+                                        shouldMask = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (shouldMask) break;
+                        }
+                        
+                        const dIdx = idx * 4;
+                        if (shouldMask) {
+                            // 下の文字を完全に覆い隠す（消す）ために「真っ白」で塗りつぶす
+                            dst[dIdx] = 255;     // R
+                            dst[dIdx+1] = 255;   // G
+                            dst[dIdx+2] = 255;   // B
+                            dst[dIdx+3] = 255;   // A (完全不透明)
+                        } else {
+                            dst[dIdx+3] = 0;     // 該当しない部分は完全透明（元の画像が見える）
+                        }
                     }
                 }
                 
@@ -214,7 +248,7 @@
                 return maskCanvas;
             }
 
-            // 状態遷移図：タップで切り替え（Flood Fillによる個別パーツの開閉）
+            // タップされた位置の文字の塊（白マスク）を検出し、透過/非透過を切り替える（Flood Fill）
             static toggleMaskAtPoint(maskCtx, baseMaskCtx, startX, startY, width, height) {
                 const currentData = maskCtx.getImageData(0, 0, width, height);
                 const baseData = baseMaskCtx.getImageData(0, 0, width, height);
@@ -224,14 +258,14 @@
                 
                 const startIndex = (startY * width + startX) * 4;
                 
-                // 元の自動生成マスクが存在しない位置なら何もしない
+                // もともと文字が消されていない（白マスクがない）場所なら何もしない
                 if (base[startIndex + 3] === 0) return false;
 
-                // 現在マスクが「見えているか」を判定
-                const isCurrentlyVisible = cur[startIndex + 3] > 0;
-                const targetAlpha = isCurrentlyVisible ? 0 : 255; // 見えているなら隠す、消えているなら戻す
+                // 現在、文字が「消えている（白マスクが不透明）」か「見えている（透明）」かを判定
+                const isCurrentlyHidden = cur[startIndex + 3] > 0;
+                const targetAlpha = isCurrentlyHidden ? 0 : 255; // 消えているなら透明にして文字を出し、出ているなら白に戻す
 
-                // キューを用いたFlood Fill（高速走査アルゴリズム）
+                // キューを用いたFlood Fillアルゴリズムによる連続領域（文字の塊）の追跡
                 const queue = [[startX, startY]];
                 const visited = new Uint8Array(width * height);
                 visited[startY * width + startX] = 1;
@@ -240,13 +274,13 @@
                     const [x, y] = queue.shift();
                     const idx = (y * width + x) * 4;
 
-                    // ピクセルの更新
+                    // ピクセルの透明度をトグル変換
                     cur[idx] = base[idx];
                     cur[idx+1] = base[idx+1];
                     cur[idx+2] = base[idx+2];
                     cur[idx+3] = targetAlpha;
 
-                    // 上下左右の4近傍をチェック
+                    // 4近傍（上下左右）を走査
                     const directions = [[0,1], [0,-1], [1,0], [-1,0]];
                     for (const [dx, dy] of directions) {
                         const nx = x + dx;
@@ -256,7 +290,7 @@
                             const nidx = (ny * width + nx) * 4;
                             const npos = ny * width + nx;
 
-                            // まだ未訪問、かつ「元々のマスク領域」と繋がっている箇所を追跡
+                            // 未訪問かつ、元々の白マスクが存在する領域であれば同じ文字の塊として判定
                             if (!visited[npos] && base[nidx + 3] > 0) {
                                 visited[npos] = 1;
                                 queue.push([nx, ny]);
@@ -270,11 +304,11 @@
             }
         }
 
-        // --- 3. クラス図：画面・アプリケーション状態（UI制御） ---
+        // --- 3. 画面・UIアプリケーション状態制御 ---
         class AppScreen {
             constructor() {
                 this.currentNote = null;
-                this.baseMaskCanvas = null; // タップ復元用の初期状態バックアップ
+                this.baseMaskCanvas = null;
                 this.initElements();
                 this.initEvents();
                 this.renderList();
@@ -301,23 +335,18 @@
             }
 
             initEvents() {
-                // 新規追加
                 this.btnNewNote.addEventListener('click', () => this.openEditScreen());
-                // キャンセル
                 this.btnCancel.addEventListener('click', () => this.closeEditScreen());
-                // 保存ボタン (シーケンス図: 保存ボタンを押す -> データベースを保存)
                 this.btnSave.addEventListener('click', () => this.onSavePressed());
-                // 写真の読み込み完了
                 this.fileInput.addEventListener('change', (e) => this.onImageSelected(e));
-                // 色選択変更
+                
                 document.querySelectorAll('input[name="targetColor"]').forEach(radio => {
                     radio.addEventListener('change', () => this.onColorSelect());
                 });
-                // マスクタップ処理 (状態遷移図: タップで切り替え)
+                
                 this.maskCanvas.addEventListener('click', (e) => this.onMaskTap(e));
             }
 
-            // シーケンス図: 保存データから読み込み表示
             renderList() {
                 const notes = Note.getAll();
                 this.noteGrid.innerHTML = '';
@@ -334,7 +363,7 @@
                     card.innerHTML = `
                         <div class="aspect-video bg-slate-100 relative cursor-pointer overflow-hidden group">
                             <img src="${note.imageSrc}" class="w-full h-full object-cover">
-                            <img src="${note.maskSrc}" class="w-full h-full object-cover absolute top-0 left-0 opacity-70 group-hover:opacity-40 transition-opacity">
+                            <img src="${note.maskSrc}" class="w-full h-full object-cover absolute top-0 left-0 opacity-90 group-hover:opacity-50 transition-opacity">
                             <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm">
                                 📖 復習を始める
                             </div>
@@ -346,7 +375,7 @@
                             </div>
                             <div class="mt-4 pt-3 border-t border-slate-50 flex justify-between items-center">
                                 <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">
-                                    🎨 ${note.hiddenColors[0] === 'blue' ? '青マスク' : note.hiddenColors[0] === 'red' ? '赤マスク' : '緑マスク'}
+                                    🎨 ${note.hiddenColors[0] === 'red' ? '赤文字消し' : note.hiddenColors[0] === 'blue' ? '青文字消し' : '緑文字消し'}
                                 </span>
                                 <button class="btn-delete text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1 rounded hover:bg-red-50 transition-all" data-id="${note.id}">
                                     🗑 削除
@@ -355,9 +384,7 @@
                         </div>
                     `;
                     
-                    // カードタップで開く (Read)
                     card.querySelector('.aspect-video').addEventListener('click', () => this.openEditScreen(note));
-                    // 削除処理 (Delete)
                     card.querySelector('.btn-delete').addEventListener('click', (e) => {
                         e.stopPropagation();
                         if(confirm('この暗記ノートを削除しますか？')) {
@@ -372,24 +399,22 @@
 
             openEditScreen(note = null) {
                 this.screenEdit.classList.remove('hidden');
-                document.body.style.overflow = 'hidden'; // 背後スクロール抑止
+                document.body.style.overflow = 'hidden';
 
                 if (note) {
-                    // 過去データ閲覧モード (Read)
                     this.currentNote = new Note(note.id, note.imageSrc, note.maskSrc, note.title, note.createdAt, note.hiddenColors);
                     this.noteTitle.value = this.currentNote.title;
                     this.noteDate.innerText = this.currentNote.createdAt;
                     
-                    // ラジオボタンの復元
-                    const color = this.currentNote.hiddenColors[0] || 'blue';
+                    const color = this.currentNote.hiddenColors[0] || 'red';
                     document.querySelector(`input[name="targetColor"][value="${color}"]`).checked = true;
 
                     this.displayImageFromSrc(this.currentNote.imageSrc, this.currentNote.maskSrc);
                 } else {
-                    // 新規作成モード (Create)
                     this.currentNote = new Note();
                     this.noteTitle.value = "新規の暗記ノート";
                     this.noteDate.innerText = new Date().toLocaleString('ja-JP', { hour12: false });
+                    document.querySelector(`input[name="targetColor"][value="red"]`).checked = true;
                     this.clearWorkspace();
                 }
             }
@@ -407,7 +432,6 @@
                 this.fileInput.value = '';
             }
 
-            // シーケンス図: 写真を選択
             onImageSelected(e) {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -416,7 +440,6 @@
                 reader.onload = (event) => {
                     const img = new Image();
                     img.onload = () => {
-                        // ブラウザのメモリおよびLocalStorage容量の最適化のためのリサイズ処理 (最大幅800px)
                         const MAX_WIDTH = 800;
                         let width = img.width;
                         let height = img.height;
@@ -435,23 +458,19 @@
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
 
-                        // 状態遷移：自動マスク生成のキック
                         this.onColorSelect();
                     };
-                    img.src = event.target.value;
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
             }
 
-            // シーケンス図: 画像と指定色を渡す -> RGB値を判定しマスク画像生成 -> マスク済み画像を表示
             onColorSelect() {
                 if (this.canvasWrapper.classList.contains('hidden')) return;
 
                 const targetColor = document.querySelector('input[name="targetColor"]:checked').value;
                 this.currentNote.hiddenColors = [targetColor];
 
-                // エンジンによる初期マスクの生成
                 const generatedMask = ImageProcessingEngine.generateMaskCanvas(this.origCanvas, targetColor);
                 
                 this.maskCanvas.width = generatedMask.width;
@@ -459,14 +478,12 @@
                 const maskCtx = this.maskCanvas.getContext('2d');
                 maskCtx.drawImage(generatedMask, 0, 0);
 
-                // 個別パーツ開閉のための「初期マスクのバックアップ」を保持
                 this.baseMaskCanvas = document.createElement('canvas');
                 this.baseMaskCanvas.width = generatedMask.width;
                 this.baseMaskCanvas.height = generatedMask.height;
                 this.baseMaskCanvas.getContext('2d').drawImage(generatedMask, 0, 0);
             }
 
-            // 既存データの読み込み・描画
             displayImageFromSrc(imgSrc, maskSrc) {
                 const img = new Image();
                 img.onload = () => {
@@ -480,8 +497,7 @@
                         this.maskCanvas.height = mask.height;
                         this.maskCanvas.getContext('2d').drawImage(mask, 0, 0);
 
-                        // 再生成用バックアップ（既存ロード時は現在の色設定に合わせて再生成用バックアップを作る）
-                        const targetColor = this.currentNote.hiddenColors[0] || 'blue';
+                        const targetColor = this.currentNote.hiddenColors[0] || 'red';
                         this.baseMaskCanvas = ImageProcessingEngine.generateMaskCanvas(this.origCanvas, targetColor);
 
                         this.canvasPlaceholder.classList.add('hidden');
@@ -492,9 +508,7 @@
                 img.src = imgSrc;
             }
 
-            // クラス図/状態遷移図: マスクタップ時処理（個別要素のトグル開閉）
             onMaskTap(e) {
-                // CSS上の表示サイズとCanvasの内部実解像度間の座標スケール変換
                 const rect = this.maskCanvas.getBoundingClientRect();
                 const scaleX = this.maskCanvas.width / rect.width;
                 const scaleY = this.maskCanvas.height / rect.height;
@@ -505,7 +519,6 @@
                 const maskCtx = this.maskCanvas.getContext('2d');
                 const baseMaskCtx = this.baseMaskCanvas.getContext('2d');
 
-                // エンジンを叩いてタップ箇所の連動成分を反転透過
                 ImageProcessingEngine.toggleMaskAtPoint(
                     maskCtx, 
                     baseMaskCtx, 
@@ -516,19 +529,16 @@
                 );
             }
 
-            // シーケンス図: 保存ボタンを押す -> ノートデータを保存
             onSavePressed() {
                 if (this.canvasWrapper.classList.contains('hidden')) {
                     alert('写真が選択されていません。');
                     return;
                 }
 
-                // 現在のワークスペースの状態をNoteエンティティに同期
                 this.currentNote.title = this.noteTitle.value.trim() || "無題のノート";
                 this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.75);
                 this.currentNote.maskSrc = this.maskCanvas.toDataURL('image/png');
 
-                // ローカルストレージ(DB)へ書き込み
                 Note.save(this.currentNote);
 
                 this.closeEditScreen();
@@ -536,7 +546,6 @@
             }
         }
 
-        // アプリケーションのエントリポイント起動
         window.addEventListener('DOMContentLoaded', () => {
             new AppScreen();
         });
