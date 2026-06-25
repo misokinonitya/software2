@@ -3,20 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタル暗記ノートアプリ (文字消去版)</title>
+    <title>デジタル暗記ノートアプリ (完全フィット版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* キャンバスを重ねるためのスタイル */
+        /* 💡 どんな画像サイズでも親要素の枠内に100%収めるためのマジックCSS */
         .canvas-container {
             position: relative;
-            display: inline-block;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             max-width: 100%;
-            overflow: auto;
+            max-height: 65vh; /* 画面の高さに応じてはみ出さないように制限 */
+        }
+        #originalCanvas {
+            max-width: 100%;
+            max-height: 65vh;
+            width: auto;
+            height: auto;
+            display: block;
+            object-fit: contain;
         }
         #maskCanvas {
             position: absolute;
             top: 0;
             left: 0;
+            /* 元画の縮小率に完全に同期させる */
+            width: 100%;
+            height: 100%;
             cursor: pointer;
         }
     </style>
@@ -47,14 +60,14 @@
         </section>
 
         <section id="screenEdit" class="hidden fixed inset-0 bg-black/60 z-20 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden animate-fade-in">
                 
                 <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <input type="text" id="noteTitle" placeholder="ノートのタイトルを入力..." class="text-lg font-bold bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-0.5 w-2/3 transition-all">
                     <span id="noteDate" class="text-xs text-slate-400"></span>
                 </div>
 
-                <div class="p-6 overflow-y-auto flex-1 flex flex-col md:flex-row gap-6">
+                <div class="p-4 md:p-6 overflow-y-auto flex-1 flex flex-col md:flex-row gap-6">
                     
                     <div class="w-full md:w-64 flex flex-col gap-4 shrink-0">
                         
@@ -89,14 +102,14 @@
                         </div>
 
                         <div class="bg-indigo-50 text-indigo-800 p-3 rounded-xl text-xs leading-relaxed border border-indigo-100">
-                            <p class="font-bold mb-1">💡 新・使い方ガイド</p>
+                            <p class="font-bold mb-1">💡 使い方ガイド</p>
                             <p>① 写真を選び、消したい文字の色を指定します。</p>
-                            <p>② 指定した色の文字がノートの背景（白）と同化して<span class="text-emerald-600 font-bold">完全に消えます</span>。</p>
-                            <p>③ 文字が消えた部分をタップすると、その部分だけ文字が一時的に<span class="text-indigo-600 font-bold">再表示（開閉）</span>されます！</p>
+                            <p>② 指定した色の文字が背景と同化して<span class="text-emerald-600 font-bold">完全に消えます</span>。</p>
+                            <p>③ 消えた部分をタップすると、その文字が一時的に<span class="text-indigo-600 font-bold">再表示（開閉）</span>されます！</p>
                         </div>
                     </div>
 
-                    <div class="flex-1 min-h-[300px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative">
+                    <div class="flex-1 min-h-[350px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative">
                         <div id="canvasWrapper" class="canvas-container hidden">
                             <canvas id="originalCanvas"></canvas>
                             <canvas id="maskCanvas"></canvas>
@@ -124,20 +137,19 @@
     </main>
 
     <script>
-        
         // --- 1. ノートモデル（CRUD管理） ---
         class Note {
             constructor(id, imageSrc, maskSrc, title, createdAt, hiddenColors) {
                 this.id = id || Date.now();
-                this.imageSrc = imageSrc; // Base64原画データ
-                this.maskSrc = maskSrc;   // Base64編集済マスクデータ（白消しレイヤー）
+                this.imageSrc = imageSrc; 
+                this.maskSrc = maskSrc;   
                 this.title = title || "無題のノート";
                 this.createdAt = createdAt || new Date().toLocaleString('ja-JP', { hour12: false });
                 this.hiddenColors = hiddenColors || ['red'];
             }
 
             static getAll() {
-                const data = localStorage.getItem('digital_memorize_notes_v2');
+                const data = localStorage.getItem('digital_memorize_notes_v3');
                 return data ? JSON.parse(data) : [];
             }
 
@@ -149,37 +161,31 @@
                 } else {
                     notes.push(noteInstance);
                 }
-                localStorage.setItem('digital_memorize_notes_v2', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
             }
 
             static delete(id) {
                 let notes = Note.getAll();
                 notes = notes.filter(n => n.id !== id);
-                localStorage.setItem('digital_memorize_notes_v2', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
             }
         }
 
         // --- 2. 画像処理エンジン（文字抹消＆輪郭膨張処理） ---
         class ImageProcessingEngine {
-            
-            // 精密な色判定（RGB値の差分としきい値）
             static checkColor(r, g, b, targetColor) {
                 if (targetColor === 'red') {
-                    // 赤文字: RがG、Bより明らかに高く、かつ一定以上の鮮やかさを持つ
                     return (r > g + 25 && r > b + 25 && r > 60);
                 }
                 if (targetColor === 'blue') {
-                    // 青文字: BがR、Gより明らかに高い
                     return (b > r + 25 && b > g + 20 && b > 60);
                 }
                 if (targetColor === 'green') {
-                    // 緑文字: GがR、Bより明らかに高い
                     return (g > r + 20 && g > b + 15 && g > 60);
                 }
                 return false;
             }
 
-            // 指定した文字色を検出し、「白（背景色）」で完全に消し去るマスク画像を生成
             static generateMaskCanvas(originalCanvas, targetColor) {
                 const width = originalCanvas.width;
                 const height = originalCanvas.height;
@@ -197,26 +203,22 @@
                 const src = imgData.data;
                 const dst = maskImgData.data;
                 
-                // 1次判定（ターゲットカラーのピクセルマップを作成）
                 const hitMap = new Uint8Array(width * height);
                 for (let i = 0; i < src.length; i += 4) {
                     const r = src[i];
                     const g = src[i+1];
                     const b = src[i+2];
-                    const pixelIdx = i / 4;
-                    
                     if (this.checkColor(r, g, b, targetColor)) {
-                        hitMap[pixelIdx] = 1;
+                        hitMap[i / 4] = 1;
                     }
                 }
                 
-                // 2次処理：文字のフチ（アンチエイリアス）の残り赤みを防ぐため、周囲1pxを巻き込んで「膨張（Dilation）」させる
+                // 周囲を巻き込んで白消し（膨張処理）
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         const idx = y * width + x;
                         let shouldMask = false;
                         
-                        // 自分自身と周囲3x3ピクセルをスキャン
                         for (let dy = -1; dy <= 1; dy++) {
                             for (let dx = -1; dx <= 1; dx++) {
                                 const nx = x + dx;
@@ -233,13 +235,12 @@
                         
                         const dIdx = idx * 4;
                         if (shouldMask) {
-                            // 下の文字を完全に覆い隠す（消す）ために「真っ白」で塗りつぶす
-                            dst[dIdx] = 255;     // R
-                            dst[dIdx+1] = 255;   // G
-                            dst[dIdx+2] = 255;   // B
-                            dst[dIdx+3] = 255;   // A (完全不透明)
+                            dst[dIdx] = 255;   
+                            dst[dIdx+1] = 255; 
+                            dst[dIdx+2] = 255; 
+                            dst[dIdx+3] = 255; 
                         } else {
-                            dst[dIdx+3] = 0;     // 該当しない部分は完全透明（元の画像が見える）
+                            dst[dIdx+3] = 0;   
                         }
                     }
                 }
@@ -248,8 +249,11 @@
                 return maskCanvas;
             }
 
-            // タップされた位置の文字の塊（白マスク）を検出し、透過/非透過を切り替える（Flood Fill）
-            static toggleMaskAtPoint(maskCtx, baseMaskCtx, startX, startY, width, height) {
+            static toggleMaskAtPoint(maskCanvas, baseMaskCtx, startX, startY) {
+                const width = maskCanvas.width;
+                const height = maskCanvas.height;
+                const maskCtx = maskCanvas.getContext('2d');
+
                 const currentData = maskCtx.getImageData(0, 0, width, height);
                 const baseData = baseMaskCtx.getImageData(0, 0, width, height);
                 
@@ -257,15 +261,11 @@
                 const base = baseData.data;
                 
                 const startIndex = (startY * width + startX) * 4;
-                
-                // もともと文字が消されていない（白マスクがない）場所なら何もしない
                 if (base[startIndex + 3] === 0) return false;
 
-                // 現在、文字が「消えている（白マスクが不透明）」か「見えている（透明）」かを判定
                 const isCurrentlyHidden = cur[startIndex + 3] > 0;
-                const targetAlpha = isCurrentlyHidden ? 0 : 255; // 消えているなら透明にして文字を出し、出ているなら白に戻す
+                const targetAlpha = isCurrentlyHidden ? 0 : 255;
 
-                // キューを用いたFlood Fillアルゴリズムによる連続領域（文字の塊）の追跡
                 const queue = [[startX, startY]];
                 const visited = new Uint8Array(width * height);
                 visited[startY * width + startX] = 1;
@@ -274,23 +274,19 @@
                     const [x, y] = queue.shift();
                     const idx = (y * width + x) * 4;
 
-                    // ピクセルの透明度をトグル変換
                     cur[idx] = base[idx];
                     cur[idx+1] = base[idx+1];
                     cur[idx+2] = base[idx+2];
                     cur[idx+3] = targetAlpha;
 
-                    // 4近傍（上下左右）を走査
                     const directions = [[0,1], [0,-1], [1,0], [-1,0]];
                     for (const [dx, dy] of directions) {
                         const nx = x + dx;
                         const ny = y + dy;
-                        
                         if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
                             const nidx = (ny * width + nx) * 4;
                             const npos = ny * width + nx;
 
-                            // 未訪問かつ、元々の白マスクが存在する領域であれば同じ文字の塊として判定
                             if (!visited[npos] && base[nidx + 3] > 0) {
                                 visited[npos] = 1;
                                 queue.push([nx, ny]);
@@ -308,7 +304,7 @@
         class AppScreen {
             constructor() {
                 this.currentNote = null;
-                this.baseMaskCanvas = null;
+                this.baseMaskCanvas = null; 
                 this.initElements();
                 this.initEvents();
                 this.renderList();
@@ -440,6 +436,7 @@
                 reader.onload = (event) => {
                     const img = new Image();
                     img.onload = () => {
+                        // 解像度の上限を設定（比率は維持）
                         const MAX_WIDTH = 800;
                         let width = img.width;
                         let height = img.height;
@@ -509,6 +506,7 @@
             }
 
             onMaskTap(e) {
+                // 💡 CSSで伸縮された表示上のサイズと、内部の実解像度のズレを高度に計算・補正するロジック
                 const rect = this.maskCanvas.getBoundingClientRect();
                 const scaleX = this.maskCanvas.width / rect.width;
                 const scaleY = this.maskCanvas.height / rect.height;
@@ -516,16 +514,13 @@
                 const clickX = Math.floor((e.clientX - rect.left) * scaleX);
                 const clickY = Math.floor((e.clientY - rect.top) * scaleY);
 
-                const maskCtx = this.maskCanvas.getContext('2d');
                 const baseMaskCtx = this.baseMaskCanvas.getContext('2d');
 
                 ImageProcessingEngine.toggleMaskAtPoint(
-                    maskCtx, 
+                    this.maskCanvas, 
                     baseMaskCtx, 
                     clickX, 
-                    clickY, 
-                    this.maskCanvas.width, 
-                    this.maskCanvas.height
+                    clickY
                 );
             }
 
