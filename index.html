@@ -3,33 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタル暗記ノートアプリ (完全フィット版)</title>
+    <title>デジタル暗記ノートアプリ (PDF対応＆完全フィット版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* 💡 どんな画像サイズでも親要素の枠内に100%収めるためのマジックCSS */
-        .canvas-container {
+        /* 拡大・縮小されても絶対に枠からはみ出さないためのコンテナ制御 */
+        .workspace-area {
             position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            max-width: 100%;
-            max-height: 65vh; /* 画面の高さに応じてはみ出さないように制限 */
+            width: 100%;
+            height: 60vh;
+            min-height: 400px;
+            max-height: 650px;
         }
+        /* Canvasの等倍表示バグを防ぎ、アスペクト比を維持して最大表示 */
         #originalCanvas {
             max-width: 100%;
-            max-height: 65vh;
+            max-height: 100%;
             width: auto;
             height: auto;
             display: block;
-            object-fit: contain;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            background-color: #ffffff;
         }
         #maskCanvas {
             position: absolute;
             top: 0;
             left: 0;
-            /* 元画の縮小率に完全に同期させる */
-            width: 100%;
-            height: 100%;
+            display: block;
             cursor: pointer;
         }
     </style>
@@ -45,7 +46,7 @@
         </button>
     </header>
 
-    <main class="max-w-5xl mx-auto p-4 md:p-6">
+    <main class="max-w-6xl mx-auto p-4 md:p-6">
         
         <section id="screenList">
             <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
@@ -59,8 +60,8 @@
             </div>
         </section>
 
-        <section id="screenEdit" class="hidden fixed inset-0 bg-black/60 z-20 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden animate-fade-in">
+        <section id="screenEdit" class="hidden fixed inset-0 bg-black/60 z-20 flex items-center justify-center p-2 md:p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] flex flex-col overflow-hidden">
                 
                 <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <input type="text" id="noteTitle" placeholder="ノートのタイトルを入力..." class="text-lg font-bold bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1 py-0.5 w-2/3 transition-all">
@@ -72,11 +73,11 @@
                     <div class="w-full md:w-64 flex flex-col gap-4 shrink-0">
                         
                         <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-indigo-400 transition-all bg-slate-50 relative">
-                            <input type="file" id="fileInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <input type="file" id="fileInput" accept="image/*,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                             <div class="text-slate-500 text-sm pointer-events-none">
-                                <p class="text-2xl mb-1">📷</p>
-                                <p class="font-semibold text-indigo-600">写真を撮影 / 選択</p>
-                                <p class="text-xs text-slate-400 mt-1">アルバムまたはカメラ起動</p>
+                                <p class="text-2xl mb-1">📁</p>
+                                <p class="font-semibold text-indigo-600">写真・PDFを選択</p>
+                                <p class="text-xs text-slate-400 mt-1">画像、またはPDFの1枚目</p>
                             </div>
                         </div>
 
@@ -103,20 +104,23 @@
 
                         <div class="bg-indigo-50 text-indigo-800 p-3 rounded-xl text-xs leading-relaxed border border-indigo-100">
                             <p class="font-bold mb-1">💡 使い方ガイド</p>
-                            <p>① 写真を選び、消したい文字の色を指定します。</p>
-                            <p>② 指定した色の文字が背景と同化して<span class="text-emerald-600 font-bold">完全に消えます</span>。</p>
-                            <p>③ 消えた部分をタップすると、その文字が一時的に<span class="text-indigo-600 font-bold">再表示（開閉）</span>されます！</p>
+                            <p>① 写真かPDFを選び、消したい文字の色を指定します。</p>
+                            <p>② 指定した色の文字が背景と同化して<span>完全に消えます</span>。</p>
+                            <p>③ 消えた部分をタップすると、その文字が一時的に<span>再表示（開閉）</span>されます！</p>
                         </div>
                     </div>
 
-                    <div class="flex-1 min-h-[350px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative">
-                        <div id="canvasWrapper" class="canvas-container hidden">
+                    <div class="flex-1 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative min-h-[350px]">
+                        
+                        <div id="canvasWrapper" class="workspace-area hidden flex items-center justify-center">
                             <canvas id="originalCanvas"></canvas>
                             <canvas id="maskCanvas"></canvas>
                         </div>
+
                         <div id="canvasPlaceholder" class="text-slate-400 text-sm text-center">
                             <p class="text-3xl mb-1">🖼️</p>
-                            <p>画像を選択するとここに表示されます</p>
+                            <p>画像またはPDFを選択してください</p>
+                            <p class="text-xs text-slate-400 mt-1">※PDFファイルは自動で高画質画像化されます</p>
                         </div>
                     </div>
 
@@ -137,7 +141,10 @@
     </main>
 
     <script>
-        // --- 1. ノートモデル（CRUD管理） ---
+        // PDF.jsのワーカーを設定 (非同期処理を安定させるため必須)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // --- 1. クラス：ノート (Note) ---
         class Note {
             constructor(id, imageSrc, maskSrc, title, createdAt, hiddenColors) {
                 this.id = id || Date.now();
@@ -145,12 +152,7 @@
                 this.maskSrc = maskSrc;   
                 this.title = title || "無題のノート";
                 this.createdAt = createdAt || new Date().toLocaleString('ja-JP', { hour12: false });
-                this.hiddenColors = hiddenColors || ['red'];
-            }
-
-            static getAll() {
-                const data = localStorage.getItem('digital_memorize_notes_v3');
-                return data ? JSON.parse(data) : [];
+                this.hiddenColors = hiddenColors || ['red']; 
             }
 
             static save(noteInstance) {
@@ -161,17 +163,22 @@
                 } else {
                     notes.push(noteInstance);
                 }
-                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v5', JSON.stringify(notes));
             }
 
             static delete(id) {
                 let notes = Note.getAll();
                 notes = notes.filter(n => n.id !== id);
-                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v5', JSON.stringify(notes));
+            }
+
+            static getAll() {
+                const data = localStorage.getItem('digital_memorize_notes_v5');
+                return data ? JSON.parse(data) : [];
             }
         }
 
-        // --- 2. 画像処理エンジン（文字抹消＆輪郭膨張処理） ---
+        // --- 2. クラス：画像処理エンジン (ImageProcessingEngine) ---
         class ImageProcessingEngine {
             static checkColor(r, g, b, targetColor) {
                 if (targetColor === 'red') {
@@ -213,14 +220,13 @@
                     }
                 }
                 
-                // 周囲を巻き込んで白消し（膨張処理）
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         const idx = y * width + x;
                         let shouldMask = false;
                         
-                        for (let dy = -1; dy <= 1; dy++) {
-                            for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -2; dy <= 2; dy++) {
+                            for (let dx = -2; dx <= 2; dx++) {
                                 const nx = x + dx;
                                 const ny = y + dy;
                                 if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
@@ -300,7 +306,7 @@
             }
         }
 
-        // --- 3. 画面・UIアプリケーション状態制御 ---
+        // --- 3. クラス：画面 (AppScreen) ---
         class AppScreen {
             constructor() {
                 this.currentNote = null;
@@ -334,13 +340,30 @@
                 this.btnNewNote.addEventListener('click', () => this.openEditScreen());
                 this.btnCancel.addEventListener('click', () => this.closeEditScreen());
                 this.btnSave.addEventListener('click', () => this.onSavePressed());
-                this.fileInput.addEventListener('change', (e) => this.onImageSelected(e));
+                this.fileInput.addEventListener('change', (e) => this.onFileSelected(e));
                 
                 document.querySelectorAll('input[name="targetColor"]').forEach(radio => {
                     radio.addEventListener('change', () => this.onColorSelect());
                 });
                 
                 this.maskCanvas.addEventListener('click', (e) => this.onMaskTap(e));
+
+                window.addEventListener('resize', () => {
+                    if (!this.canvasWrapper.classList.contains('hidden')) {
+                        this.syncCanvasDisplaySize();
+                    }
+                });
+            }
+
+            syncCanvasDisplaySize() {
+                const renderedWidth = this.origCanvas.clientWidth;
+                const renderedHeight = this.origCanvas.clientHeight;
+
+                this.maskCanvas.style.width = renderedWidth + 'px';
+                this.maskCanvas.style.height = renderedHeight + 'px';
+
+                this.canvasWrapper.style.width = renderedWidth + 'px';
+                this.canvasWrapper.style.height = renderedHeight + 'px';
             }
 
             renderList() {
@@ -359,7 +382,7 @@
                     card.innerHTML = `
                         <div class="aspect-video bg-slate-100 relative cursor-pointer overflow-hidden group">
                             <img src="${note.imageSrc}" class="w-full h-full object-cover">
-                            <img src="${note.maskSrc}" class="w-full h-full object-cover absolute top-0 left-0 opacity-90 group-hover:opacity-50 transition-opacity">
+                            <img src="${note.maskSrc}" class="w-full h-full object-cover absolute top-0 left-0 opacity-90 group-hover:opacity-40 transition-opacity">
                             <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm">
                                 📖 復習を始める
                             </div>
@@ -428,16 +451,81 @@
                 this.fileInput.value = '';
             }
 
-            onImageSelected(e) {
+            // 💡 画像とPDFの選択処理をここで分岐管理
+            onFileSelected(e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
+                // タイトルがデフォルトのままならファイル名をセット
+                if (this.noteTitle.value === "新規の暗記ノート") {
+                    this.noteTitle.value = file.name.replace(/\.[^/.]+$/, "");
+                }
+
+                if (file.type === "application/pdf") {
+                    this.processPDFFile(file);
+                } else {
+                    this.processImageFile(file);
+                }
+            }
+
+            // 📄 PDFファイルを画像化してCanvasに描画するロジック
+            processPDFFile(file) {
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    try {
+                        const typedarray = new Uint8Array(event.target.result);
+                        // PDFのロード
+                        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+                        // 最初のページを取得
+                        const page = await pdf.getPage(1);
+                        
+                        // 文字がボケないように2倍のスケールで初期レンダリング
+                        const baseViewport = page.getViewport({ scale: 2.0 });
+                        
+                        const MAX_WIDTH = 1200;
+                        let width = baseViewport.width;
+                        let height = baseViewport.height;
+
+                        if (width > MAX_WIDTH) {
+                            height = Math.round((height * MAX_WIDTH) / width);
+                            width = MAX_WIDTH;
+                        }
+
+                        this.origCanvas.width = width;
+                        this.origCanvas.height = height;
+
+                        // Canvasの幅に合わせて正確な比率のViewportを設定
+                        const finalScale = width / page.getViewport({ scale: 1.0 }).width;
+                        const finalViewport = page.getViewport({ scale: finalScale });
+
+                        const ctx = this.origCanvas.getContext('2d');
+                        const renderContext = {
+                            canvasContext: ctx,
+                            viewport: finalViewport
+                        };
+                        
+                        // PDFの内容をCanvasへレンダリング
+                        await page.render(renderContext).promise;
+
+                        this.canvasPlaceholder.classList.add('hidden');
+                        this.canvasWrapper.classList.remove('hidden');
+
+                        this.onColorSelect();
+                    } catch (error) {
+                        console.error(error);
+                        alert("PDFの読み込みに失敗しました。暗号化されたファイルでないかご確認ください。");
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            // 🖼️ 従来の画像ファイルを処理するロジック
+            processImageFile(file) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
                     img.onload = () => {
-                        // 解像度の上限を設定（比率は維持）
-                        const MAX_WIDTH = 800;
+                        const MAX_WIDTH = 1200;
                         let width = img.width;
                         let height = img.height;
 
@@ -479,6 +567,8 @@
                 this.baseMaskCanvas.width = generatedMask.width;
                 this.baseMaskCanvas.height = generatedMask.height;
                 this.baseMaskCanvas.getContext('2d').drawImage(generatedMask, 0, 0);
+
+                setTimeout(() => this.syncCanvasDisplaySize(), 50);
             }
 
             displayImageFromSrc(imgSrc, maskSrc) {
@@ -499,6 +589,8 @@
 
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
+
+                        setTimeout(() => this.syncCanvasDisplaySize(), 50);
                     };
                     mask.src = maskSrc;
                 };
@@ -506,13 +598,15 @@
             }
 
             onMaskTap(e) {
-                // 💡 CSSで伸縮された表示上のサイズと、内部の実解像度のズレを高度に計算・補正するロジック
                 const rect = this.maskCanvas.getBoundingClientRect();
+                
                 const scaleX = this.maskCanvas.width / rect.width;
                 const scaleY = this.maskCanvas.height / rect.height;
 
                 const clickX = Math.floor((e.clientX - rect.left) * scaleX);
                 const clickY = Math.floor((e.clientY - rect.top) * scaleY);
+
+                if (clickX < 0 || clickX >= this.maskCanvas.width || clickY < 0 || clickY >= this.maskCanvas.height) return;
 
                 const baseMaskCtx = this.baseMaskCanvas.getContext('2d');
 
@@ -526,12 +620,12 @@
 
             onSavePressed() {
                 if (this.canvasWrapper.classList.contains('hidden')) {
-                    alert('写真が選択されていません。');
+                    alert('写真またはPDFが選択されていません。');
                     return;
                 }
 
                 this.currentNote.title = this.noteTitle.value.trim() || "無題のノート";
-                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.75);
+                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.8);
                 this.currentNote.maskSrc = this.maskCanvas.toDataURL('image/png');
 
                 Note.save(this.currentNote);
