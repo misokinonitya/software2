@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタル暗記ノートアプリ (PDF全ページ選択＆完全フィット版)</title>
+    <title>デジタル暗記ノートアプリ (PDFページめくり改善版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -81,6 +81,23 @@
                             </div>
                         </div>
 
+                        <div id="pdfPageControls" class="hidden bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex flex-col gap-2 items-center select-none">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-700 w-full text-left flex items-center gap-1">
+                                <span>📄</span> PDFページ切り替え
+                            </h3>
+                            <div class="flex items-center justify-between w-full mt-1">
+                                <button id="btnPrevPage" class="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded shadow-sm hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none transition-all text-xs">
+                                    ◀ 前へ
+                                </button>
+                                <span class="text-xs text-slate-600 font-semibold">
+                                    <span id="lblCurrentPage" class="font-bold text-indigo-600 text-sm">1</span> / <span id="lblTotalPages">1</span>
+                                </span>
+                                <button id="btnNextPage" class="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded shadow-sm hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none transition-all text-xs">
+                                    次へ ▶
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">1. 消す（隠す）色の選択</h3>
                             <div class="flex flex-col gap-2">
@@ -105,21 +122,13 @@
                         <div class="bg-indigo-50 text-indigo-800 p-3 rounded-xl text-xs leading-relaxed border border-indigo-100">
                             <p class="font-bold mb-1">💡 使い方ガイド</p>
                             <p>① 写真かPDFを選び、消したい文字の色を指定します。</p>
-                            <p>② PDFの場合は、上の<b>「ページめくりボタン」</b>で暗記したいページへ自由に移動できます。</p>
-                            <p>③ 「ノートを保存」を押すと、現在開いているページが暗記ノートとして保存されます！</p>
+                            <p>② PDFの場合は、左メニューに出現する<b>「ページ切り替え」</b>で暗記したいページへ自由に移動できます。</p>
+                            <p>③ 「このページを保存」を押すと、現在開いているページが暗記ノートとして保存されます！</p>
                         </div>
                     </div>
 
                     <div class="flex-1 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center p-4 overflow-hidden relative min-h-[350px]">
                         
-                        <div id="pdfPageControls" class="hidden mb-3 flex items-center gap-4 bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-200 z-10 text-sm font-semibold select-none">
-                            <button id="btnPrevPage" class="text-slate-600 hover:text-indigo-600 font-bold px-2 disabled:opacity-30 disabled:pointer-events-none transition-colors">◀ 前のページ</button>
-                            <span class="text-xs text-slate-500">
-                                <span id="lblCurrentPage" class="font-bold text-slate-800 text-sm">1</span> / <span id="lblTotalPages">1</span> ページ
-                            </span>
-                            <button id="btnNextPage" class="text-slate-600 hover:text-indigo-600 font-bold px-2 disabled:opacity-30 disabled:pointer-events-none transition-colors">次のページ ▶</button>
-                        </div>
-
                         <div id="canvasWrapper" class="workspace-area hidden flex items-center justify-center">
                             <canvas id="originalCanvas"></canvas>
                             <canvas id="maskCanvas"></canvas>
@@ -168,7 +177,7 @@
                 if (idx !== -1) {
                     notes[idx] = noteInstance;
                 } else {
-                    notes.push(notes.id ? noteInstance : new Note(noteInstance.id, noteInstance.imageSrc, noteInstance.maskSrc, noteInstance.title, noteInstance.createdAt, noteInstance.hiddenColors));
+                    notes.push(noteInstance);
                 }
                 localStorage.setItem('digital_memorize_notes_v6', JSON.stringify(notes));
             }
@@ -319,7 +328,6 @@
                 this.currentNote = null;
                 this.baseMaskCanvas = null; 
                 
-                // PDF管理用の内部状態
                 this.pdfDoc = null;
                 this.pdfCurrentPage = 1;
                 this.pdfFileName = "";
@@ -348,7 +356,6 @@
                 this.origCanvas = document.getElementById('originalCanvas');
                 this.maskCanvas = document.getElementById('maskCanvas');
 
-                // PDFコントロール用の要素取得
                 this.pdfPageControls = document.getElementById('pdfPageControls');
                 this.btnPrevPage = document.getElementById('btnPrevPage');
                 this.btnNextPage = document.getElementById('btnNextPage');
@@ -368,7 +375,6 @@
                 
                 this.maskCanvas.addEventListener('click', (e) => this.onMaskTap(e));
 
-                // 📄 PDFのページ切り替えイベント設定
                 this.btnPrevPage.addEventListener('click', () => this.changePdfPage(-1));
                 this.btnNextPage.addEventListener('click', () => this.changePdfPage(1));
 
@@ -452,7 +458,7 @@
                     const color = this.currentNote.hiddenColors[0] || 'red';
                     document.querySelector(`input[name="targetColor"][value="${color}"]`).checked = true;
 
-                    this.pdfPageControls.classList.add('hidden'); // 保存済みのノートを開くときは非表示
+                    this.pdfPageControls.classList.add('hidden'); 
                     this.displayImageFromSrc(this.currentNote.imageSrc, this.currentNote.maskSrc);
                 } else {
                     this.currentNote = new Note();
@@ -493,12 +499,11 @@
                 if (file.type === "application/pdf") {
                     this.processPDFFile(file);
                 } else {
-                    this.pdfPageControls.classList.add('hidden'); // 通常画像なら非表示
+                    this.pdfPageControls.classList.add('hidden');
                     this.processImageFile(file);
                 }
             }
 
-            // 📄 PDFファイルをロードし、全ページ数を解析
             processPDFFile(file) {
                 const reader = new FileReader();
                 reader.onload = async (event) => {
@@ -509,14 +514,12 @@
                         
                         this.lblTotalPages.innerText = this.pdfDoc.numPages;
                         
-                        // 2ページ以上ある場合のみ操作パネルを表示
                         if (this.pdfDoc.numPages > 1) {
                             this.pdfPageControls.classList.remove('hidden');
                         } else {
                             this.pdfPageControls.classList.add('hidden');
                         }
 
-                        // 初期ページの描画
                         await this.renderPdfPage(this.pdfCurrentPage);
 
                         this.canvasPlaceholder.classList.add('hidden');
@@ -529,12 +532,11 @@
                 reader.readAsArrayBuffer(file);
             }
 
-            // 📄 指定されたPDFページをCanvasにレンダリングする共通メソッド
             async renderPdfPage(pageNumber) {
                 if (!this.pdfDoc) return;
 
                 const page = await this.pdfDoc.getPage(pageNumber);
-                const baseViewport = page.getViewport({ scale: 2.0 }); // 高解像度レンダリング
+                const baseViewport = page.getViewport({ scale: 2.0 }); 
                 
                 const MAX_WIDTH = 1200;
                 let width = baseViewport.width;
@@ -559,21 +561,17 @@
                 
                 await page.render(renderContext).promise;
 
-                // UI表示の更新
                 this.lblCurrentPage.innerText = pageNumber;
                 this.btnPrevPage.disabled = (pageNumber <= 1);
                 this.btnNextPage.disabled = (pageNumber >= this.pdfDoc.numPages);
 
-                // 複数ページの場合は自動で「ファイル名_pページ数」をタイトルにする
                 if (this.pdfDoc.numPages > 1) {
                     this.noteTitle.value = `${this.pdfFileName}_p${pageNumber}`;
                 }
 
-                // 新しいページが描画されたのでマスク処理を自動実行
                 this.onColorSelect();
             }
 
-            // 📄 ページ変更ボタンがクリックされた時の処理
             async changePdfPage(offset) {
                 const nextPage = this.pdfCurrentPage + offset;
                 if (nextPage < 1 || nextPage > this.pdfDoc.numPages) return;
