@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタル暗記ノートアプリ (完全フィット版)</title>
+    <title>デジタル暗記ノートアプリ (PDF対応版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* 💡 どんな画像サイズでも親要素の枠内に100%収めるためのマジックCSS */
         .canvas-container {
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
             max-width: 100%;
-            max-height: 65vh; /* 画面の高さに応じてはみ出さないように制限 */
+            max-height: 65vh;
+            margin: 0 auto;
         }
         #originalCanvas {
             max-width: 100%;
@@ -27,7 +28,6 @@
             position: absolute;
             top: 0;
             left: 0;
-            /* 元画の縮小率に完全に同期させる */
             width: 100%;
             height: 100%;
             cursor: pointer;
@@ -72,11 +72,11 @@
                     <div class="w-full md:w-64 flex flex-col gap-4 shrink-0">
                         
                         <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-indigo-400 transition-all bg-slate-50 relative">
-                            <input type="file" id="fileInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <input type="file" id="fileInput" accept="image/*, application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                             <div class="text-slate-500 text-sm pointer-events-none">
-                                <p class="text-2xl mb-1">📷</p>
-                                <p class="font-semibold text-indigo-600">写真を撮影 / 選択</p>
-                                <p class="text-xs text-slate-400 mt-1">アルバムまたはカメラ起動</p>
+                                <p class="text-2xl mb-1">📁</p>
+                                <p class="font-semibold text-indigo-600">画像・PDFを選択</p>
+                                <p class="text-xs text-slate-400 mt-1">カメラ / アルバム / ファイル</p>
                             </div>
                         </div>
 
@@ -98,25 +98,40 @@
                                     <span class="w-4 h-4 rounded-full bg-green-500 inline-block"></span>
                                     <span>緑ペンを消す</span>
                                 </label>
+                                <label class="flex items-center gap-3 p-2 rounded hover:bg-slate-100 cursor-pointer text-sm">
+                                    <input type="radio" name="targetColor" value="none" class="w-4 h-4 text-slate-600">
+                                    <span class="w-4 h-4 rounded-full border-2 border-slate-400 inline-block relative">
+                                        <span class="absolute inset-0 block w-full h-0.5 bg-slate-400 rotate-45 top-1.5 left-0"></span>
+                                    </span>
+                                    <span>なにも消さない</span>
+                                </label>
                             </div>
                         </div>
 
                         <div class="bg-indigo-50 text-indigo-800 p-3 rounded-xl text-xs leading-relaxed border border-indigo-100">
                             <p class="font-bold mb-1">💡 使い方ガイド</p>
-                            <p>① 写真を選び、消したい文字の色を指定します。</p>
-                            <p>② 指定した色の文字が背景と同化して<span class="text-emerald-600 font-bold">完全に消えます</span>。</p>
-                            <p>③ 消えた部分をタップすると、その文字が一時的に<span class="text-indigo-600 font-bold">再表示（開閉）</span>されます！</p>
+                            <p>① ファイルを選び、消したい色を指定します。</p>
+                            <p>② 指定した色の文字が白く隠れます。</p>
+                            <p>③ 消えた部分をタップすると、その文字が一時的に<span class="text-indigo-600 font-bold">再表示</span>されます！</p>
                         </div>
                     </div>
 
-                    <div class="flex-1 min-h-[350px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative">
-                        <div id="canvasWrapper" class="canvas-container hidden">
-                            <canvas id="originalCanvas"></canvas>
-                            <canvas id="maskCanvas"></canvas>
+                    <div class="flex-1 flex flex-col gap-2">
+                        <div id="pdfControls" class="hidden flex justify-between items-center bg-slate-200 px-3 py-2 rounded-lg text-sm shadow-inner">
+                            <button id="btnPrevPdf" class="px-3 py-1 bg-white rounded shadow hover:bg-slate-50 disabled:opacity-50 font-bold text-slate-700">◀ 前のページ</button>
+                            <span class="font-medium text-slate-600">ページ: <span id="pageNum" class="font-bold text-indigo-600">1</span> / <span id="pageCount">?</span></span>
+                            <button id="btnNextPdf" class="px-3 py-1 bg-white rounded shadow hover:bg-slate-50 disabled:opacity-50 font-bold text-slate-700">次のページ ▶</button>
                         </div>
-                        <div id="canvasPlaceholder" class="text-slate-400 text-sm text-center">
-                            <p class="text-3xl mb-1">🖼️</p>
-                            <p>画像を選択するとここに表示されます</p>
+
+                        <div class="flex-1 min-h-[350px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative">
+                            <div id="canvasWrapper" class="canvas-container hidden">
+                                <canvas id="originalCanvas"></canvas>
+                                <canvas id="maskCanvas"></canvas>
+                            </div>
+                            <div id="canvasPlaceholder" class="text-slate-400 text-sm text-center">
+                                <p class="text-3xl mb-1">🖼️</p>
+                                <p>画像やPDFを選択すると表示されます</p>
+                            </div>
                         </div>
                     </div>
 
@@ -127,7 +142,7 @@
                         キャンセル
                     </button>
                     <button id="btnSave" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow hover:bg-indigo-700 transition-all">
-                        💾 ノートを保存
+                        💾 このページを保存
                     </button>
                 </div>
 
@@ -137,6 +152,9 @@
     </main>
 
     <script>
+        // PDF.jsのWorker設定
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
         // --- 1. ノートモデル（CRUD管理） ---
         class Note {
             constructor(id, imageSrc, maskSrc, title, createdAt, hiddenColors) {
@@ -149,7 +167,7 @@
             }
 
             static getAll() {
-                const data = localStorage.getItem('digital_memorize_notes_v3');
+                const data = localStorage.getItem('digital_memorize_notes_v4');
                 return data ? JSON.parse(data) : [];
             }
 
@@ -161,19 +179,22 @@
                 } else {
                     notes.push(noteInstance);
                 }
-                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v4', JSON.stringify(notes));
             }
 
             static delete(id) {
                 let notes = Note.getAll();
                 notes = notes.filter(n => n.id !== id);
-                localStorage.setItem('digital_memorize_notes_v3', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v4', JSON.stringify(notes));
             }
         }
 
         // --- 2. 画像処理エンジン（文字抹消＆輪郭膨張処理） ---
         class ImageProcessingEngine {
             static checkColor(r, g, b, targetColor) {
+                // 💡 「なにも消さない」場合は常にfalseを返す
+                if (targetColor === 'none') return false;
+
                 if (targetColor === 'red') {
                     return (r > g + 25 && r > b + 25 && r > 60);
                 }
@@ -197,6 +218,9 @@
                 const origCtx = originalCanvas.getContext('2d');
                 const maskCtx = maskCanvas.getContext('2d');
                 
+                // 「なにも消さない」場合は透明なキャンバスをそのまま返す
+                if (targetColor === 'none') return maskCanvas;
+
                 const imgData = origCtx.getImageData(0, 0, width, height);
                 const maskImgData = maskCtx.createImageData(width, height);
                 
@@ -213,7 +237,6 @@
                     }
                 }
                 
-                // 周囲を巻き込んで白消し（膨張処理）
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         const idx = y * width + x;
@@ -305,6 +328,12 @@
             constructor() {
                 this.currentNote = null;
                 this.baseMaskCanvas = null; 
+                
+                // PDF関連の状態
+                this.pdfDoc = null;
+                this.currentPdfPage = 1;
+                this.isRendering = false;
+
                 this.initElements();
                 this.initEvents();
                 this.renderList();
@@ -328,19 +357,39 @@
                 
                 this.origCanvas = document.getElementById('originalCanvas');
                 this.maskCanvas = document.getElementById('maskCanvas');
+
+                // PDF用の要素
+                this.pdfControls = document.getElementById('pdfControls');
+                this.btnPrevPdf = document.getElementById('btnPrevPdf');
+                this.btnNextPdf = document.getElementById('btnNextPdf');
+                this.pageNumSpan = document.getElementById('pageNum');
+                this.pageCountSpan = document.getElementById('pageCount');
             }
 
             initEvents() {
                 this.btnNewNote.addEventListener('click', () => this.openEditScreen());
                 this.btnCancel.addEventListener('click', () => this.closeEditScreen());
                 this.btnSave.addEventListener('click', () => this.onSavePressed());
-                this.fileInput.addEventListener('change', (e) => this.onImageSelected(e));
+                this.fileInput.addEventListener('change', (e) => this.onFileSelected(e));
                 
                 document.querySelectorAll('input[name="targetColor"]').forEach(radio => {
                     radio.addEventListener('change', () => this.onColorSelect());
                 });
                 
                 this.maskCanvas.addEventListener('click', (e) => this.onMaskTap(e));
+
+                // PDFページ切り替えイベント
+                this.btnPrevPdf.addEventListener('click', () => {
+                    if (this.currentPdfPage <= 1) return;
+                    this.currentPdfPage--;
+                    this.renderPdfPage(this.currentPdfPage);
+                });
+
+                this.btnNextPdf.addEventListener('click', () => {
+                    if (this.currentPdfPage >= this.pdfDoc.numPages) return;
+                    this.currentPdfPage++;
+                    this.renderPdfPage(this.currentPdfPage);
+                });
             }
 
             renderList() {
@@ -356,6 +405,11 @@
                 notes.sort((a,b) => b.id - a.id).forEach(note => {
                     const card = document.createElement('div');
                     card.className = "bg-white rounded-xl shadow border border-slate-100 overflow-hidden hover:shadow-md transition-all flex flex-col";
+                    
+                    const colorLabel = note.hiddenColors[0] === 'red' ? '赤文字消し' : 
+                                       note.hiddenColors[0] === 'blue' ? '青文字消し' : 
+                                       note.hiddenColors[0] === 'green' ? '緑文字消し' : 'なにも消さない';
+
                     card.innerHTML = `
                         <div class="aspect-video bg-slate-100 relative cursor-pointer overflow-hidden group">
                             <img src="${note.imageSrc}" class="w-full h-full object-cover">
@@ -371,7 +425,7 @@
                             </div>
                             <div class="mt-4 pt-3 border-t border-slate-50 flex justify-between items-center">
                                 <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">
-                                    🎨 ${note.hiddenColors[0] === 'red' ? '赤文字消し' : note.hiddenColors[0] === 'blue' ? '青文字消し' : '緑文字消し'}
+                                    🎨 ${colorLabel}
                                 </span>
                                 <button class="btn-delete text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1 rounded hover:bg-red-50 transition-all" data-id="${note.id}">
                                     🗑 削除
@@ -396,6 +450,8 @@
             openEditScreen(note = null) {
                 this.screenEdit.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                this.pdfControls.classList.add('hidden'); // PDFコントロールを一旦隠す
+                this.pdfDoc = null;
 
                 if (note) {
                     this.currentNote = new Note(note.id, note.imageSrc, note.maskSrc, note.title, note.createdAt, note.hiddenColors);
@@ -420,46 +476,109 @@
                 document.body.style.overflow = '';
                 this.currentNote = null;
                 this.baseMaskCanvas = null;
+                this.pdfDoc = null;
             }
 
             clearWorkspace() {
                 this.canvasWrapper.classList.add('hidden');
                 this.canvasPlaceholder.classList.remove('hidden');
                 this.fileInput.value = '';
+                this.pdfControls.classList.add('hidden');
             }
 
-            onImageSelected(e) {
+            // 💡 ファイル選択処理（画像とPDFで分岐）
+            onFileSelected(e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        // 解像度の上限を設定（比率は維持）
-                        const MAX_WIDTH = 800;
-                        let width = img.width;
-                        let height = img.height;
+                // PDFの場合
+                if (file.type === 'application/pdf') {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const typedarray = new Uint8Array(event.target.result);
+                        pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                            this.pdfDoc = pdf;
+                            this.currentPdfPage = 1;
+                            this.pageCountSpan.innerText = pdf.numPages;
+                            this.pdfControls.classList.remove('hidden');
+                            
+                            // 自動でタイトルをファイル名に設定
+                            if(this.noteTitle.value === "新規の暗記ノート") {
+                                this.noteTitle.value = file.name.replace('.pdf', '');
+                            }
 
-                        if (width > MAX_WIDTH) {
-                            height = Math.round((height * MAX_WIDTH) / width);
-                            width = MAX_WIDTH;
-                        }
+                            this.renderPdfPage(this.currentPdfPage);
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                } 
+                // 画像の場合
+                else if (file.type.startsWith('image/')) {
+                    this.pdfControls.classList.add('hidden');
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            this.renderImageToCanvas(img);
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
 
-                        this.origCanvas.width = width;
-                        this.origCanvas.height = height;
-                        
-                        const ctx = this.origCanvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
+            // 💡 PDFページを描画する処理
+            renderPdfPage(pageNum) {
+                if(this.isRendering) return;
+                this.isRendering = true;
 
+                this.pageNumSpan.innerText = pageNum;
+                this.btnPrevPdf.disabled = pageNum <= 1;
+                this.btnNextPdf.disabled = pageNum >= this.pdfDoc.numPages;
+
+                this.pdfDoc.getPage(pageNum).then(page => {
+                    // 解像度を上げて描画（スマホやRetinaディスプレイで綺麗に見せるため）
+                    const scale = 2.0; 
+                    const viewport = page.getViewport({ scale: scale });
+
+                    this.origCanvas.width = viewport.width;
+                    this.origCanvas.height = viewport.height;
+                    const ctx = this.origCanvas.getContext('2d');
+
+                    const renderContext = {
+                        canvasContext: ctx,
+                        viewport: viewport
+                    };
+
+                    page.render(renderContext).promise.then(() => {
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
+                        this.onColorSelect(); // 色の再評価
+                        this.isRendering = false;
+                    });
+                });
+            }
 
-                        this.onColorSelect();
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
+            // 画像を描画する処理（既存ロジックを分離）
+            renderImageToCanvas(img) {
+                const MAX_WIDTH = 1200; // 以前より少し上限を上げて綺麗に
+                let width = img.width;
+                let height = img.height;
+
+                if (width > MAX_WIDTH) {
+                    height = Math.round((height * MAX_WIDTH) / width);
+                    width = MAX_WIDTH;
+                }
+
+                this.origCanvas.width = width;
+                this.origCanvas.height = height;
+                const ctx = this.origCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                this.canvasPlaceholder.classList.add('hidden');
+                this.canvasWrapper.classList.remove('hidden');
+
+                this.onColorSelect();
             }
 
             onColorSelect() {
@@ -506,7 +625,9 @@
             }
 
             onMaskTap(e) {
-                // 💡 CSSで伸縮された表示上のサイズと、内部の実解像度のズレを高度に計算・補正するロジック
+                const targetColor = document.querySelector('input[name="targetColor"]:checked').value;
+                if (targetColor === 'none') return; // なにも消さないモード時はクリック処理を無視
+
                 const rect = this.maskCanvas.getBoundingClientRect();
                 const scaleX = this.maskCanvas.width / rect.width;
                 const scaleY = this.maskCanvas.height / rect.height;
@@ -526,12 +647,18 @@
 
             onSavePressed() {
                 if (this.canvasWrapper.classList.contains('hidden')) {
-                    alert('写真が選択されていません。');
+                    alert('ファイルが選択されていません。');
                     return;
                 }
 
-                this.currentNote.title = this.noteTitle.value.trim() || "無題のノート";
-                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.75);
+                // PDFの場合、タイトルにページ数を含めるとわかりやすい
+                let finalTitle = this.noteTitle.value.trim() || "無題のノート";
+                if(this.pdfDoc && finalTitle.indexOf('ページ') === -1) {
+                     finalTitle += ` (P.${this.currentPdfPage})`;
+                }
+
+                this.currentNote.title = finalTitle;
+                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.85); // 画質を少し向上
                 this.currentNote.maskSrc = this.maskCanvas.toDataURL('image/png');
 
                 Note.save(this.currentNote);
