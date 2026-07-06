@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタル暗記ノートアプリ (PDF対応＆完全フィット版)</title>
+    <title>デジタル暗記ノートアプリ (PDF全ページ選択＆完全フィット版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -77,7 +77,7 @@
                             <div class="text-slate-500 text-sm pointer-events-none">
                                 <p class="text-2xl mb-1">📁</p>
                                 <p class="font-semibold text-indigo-600">写真・PDFを選択</p>
-                                <p class="text-xs text-slate-400 mt-1">画像、またはPDFの1枚目</p>
+                                <p class="text-xs text-slate-400 mt-1">画像、または複数ページPDF</p>
                             </div>
                         </div>
 
@@ -105,13 +105,21 @@
                         <div class="bg-indigo-50 text-indigo-800 p-3 rounded-xl text-xs leading-relaxed border border-indigo-100">
                             <p class="font-bold mb-1">💡 使い方ガイド</p>
                             <p>① 写真かPDFを選び、消したい文字の色を指定します。</p>
-                            <p>② 指定した色の文字が背景と同化して<span>完全に消えます</span>。</p>
-                            <p>③ 消えた部分をタップすると、その文字が一時的に<span>再表示（開閉）</span>されます！</p>
+                            <p>② PDFの場合は、上の<b>「ページめくりボタン」</b>で暗記したいページへ自由に移動できます。</p>
+                            <p>③ 「ノートを保存」を押すと、現在開いているページが暗記ノートとして保存されます！</p>
                         </div>
                     </div>
 
-                    <div class="flex-1 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative min-h-[350px]">
+                    <div class="flex-1 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center p-4 overflow-hidden relative min-h-[350px]">
                         
+                        <div id="pdfPageControls" class="hidden mb-3 flex items-center gap-4 bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-200 z-10 text-sm font-semibold select-none">
+                            <button id="btnPrevPage" class="text-slate-600 hover:text-indigo-600 font-bold px-2 disabled:opacity-30 disabled:pointer-events-none transition-colors">◀ 前のページ</button>
+                            <span class="text-xs text-slate-500">
+                                <span id="lblCurrentPage" class="font-bold text-slate-800 text-sm">1</span> / <span id="lblTotalPages">1</span> ページ
+                            </span>
+                            <button id="btnNextPage" class="text-slate-600 hover:text-indigo-600 font-bold px-2 disabled:opacity-30 disabled:pointer-events-none transition-colors">次のページ ▶</button>
+                        </div>
+
                         <div id="canvasWrapper" class="workspace-area hidden flex items-center justify-center">
                             <canvas id="originalCanvas"></canvas>
                             <canvas id="maskCanvas"></canvas>
@@ -120,7 +128,7 @@
                         <div id="canvasPlaceholder" class="text-slate-400 text-sm text-center">
                             <p class="text-3xl mb-1">🖼️</p>
                             <p>画像またはPDFを選択してください</p>
-                            <p class="text-xs text-slate-400 mt-1">※PDFファイルは自動で高画質画像化されます</p>
+                            <p class="text-xs text-slate-400 mt-1">※複数ページのPDFも自由にページをめくって選べます</p>
                         </div>
                     </div>
 
@@ -131,7 +139,7 @@
                         キャンセル
                     </button>
                     <button id="btnSave" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow hover:bg-indigo-700 transition-all">
-                        💾 ノートを保存
+                        💾 このページを保存
                     </button>
                 </div>
 
@@ -141,7 +149,6 @@
     </main>
 
     <script>
-        // PDF.jsのワーカーを設定 (非同期処理を安定させるため必須)
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         // --- 1. クラス：ノート (Note) ---
@@ -161,19 +168,19 @@
                 if (idx !== -1) {
                     notes[idx] = noteInstance;
                 } else {
-                    notes.push(noteInstance);
+                    notes.push(notes.id ? noteInstance : new Note(noteInstance.id, noteInstance.imageSrc, noteInstance.maskSrc, noteInstance.title, noteInstance.createdAt, noteInstance.hiddenColors));
                 }
-                localStorage.setItem('digital_memorize_notes_v5', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v6', JSON.stringify(notes));
             }
 
             static delete(id) {
                 let notes = Note.getAll();
                 notes = notes.filter(n => n.id !== id);
-                localStorage.setItem('digital_memorize_notes_v5', JSON.stringify(notes));
+                localStorage.setItem('digital_memorize_notes_v6', JSON.stringify(notes));
             }
 
             static getAll() {
-                const data = localStorage.getItem('digital_memorize_notes_v5');
+                const data = localStorage.getItem('digital_memorize_notes_v6');
                 return data ? JSON.parse(data) : [];
             }
         }
@@ -311,6 +318,12 @@
             constructor() {
                 this.currentNote = null;
                 this.baseMaskCanvas = null; 
+                
+                // PDF管理用の内部状態
+                this.pdfDoc = null;
+                this.pdfCurrentPage = 1;
+                this.pdfFileName = "";
+
                 this.initElements();
                 this.initEvents();
                 this.renderList();
@@ -334,6 +347,13 @@
                 
                 this.origCanvas = document.getElementById('originalCanvas');
                 this.maskCanvas = document.getElementById('maskCanvas');
+
+                // PDFコントロール用の要素取得
+                this.pdfPageControls = document.getElementById('pdfPageControls');
+                this.btnPrevPage = document.getElementById('btnPrevPage');
+                this.btnNextPage = document.getElementById('btnNextPage');
+                this.lblCurrentPage = document.getElementById('lblCurrentPage');
+                this.lblTotalPages = document.getElementById('lblTotalPages');
             }
 
             initEvents() {
@@ -347,6 +367,10 @@
                 });
                 
                 this.maskCanvas.addEventListener('click', (e) => this.onMaskTap(e));
+
+                // 📄 PDFのページ切り替えイベント設定
+                this.btnPrevPage.addEventListener('click', () => this.changePdfPage(-1));
+                this.btnNextPage.addEventListener('click', () => this.changePdfPage(1));
 
                 window.addEventListener('resize', () => {
                     if (!this.canvasWrapper.classList.contains('hidden')) {
@@ -428,6 +452,7 @@
                     const color = this.currentNote.hiddenColors[0] || 'red';
                     document.querySelector(`input[name="targetColor"][value="${color}"]`).checked = true;
 
+                    this.pdfPageControls.classList.add('hidden'); // 保存済みのノートを開くときは非表示
                     this.displayImageFromSrc(this.currentNote.imageSrc, this.currentNote.maskSrc);
                 } else {
                     this.currentNote = new Note();
@@ -443,83 +468,120 @@
                 document.body.style.overflow = '';
                 this.currentNote = null;
                 this.baseMaskCanvas = null;
+                this.pdfDoc = null;
             }
 
             clearWorkspace() {
                 this.canvasWrapper.classList.add('hidden');
                 this.canvasPlaceholder.classList.remove('hidden');
+                this.pdfPageControls.classList.add('hidden');
                 this.fileInput.value = '';
+                this.pdfDoc = null;
+                this.pdfCurrentPage = 1;
+                this.pdfFileName = "";
             }
 
-            // 💡 画像とPDFの選択処理をここで分岐管理
             onFileSelected(e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                // タイトルがデフォルトのままならファイル名をセット
+                this.pdfFileName = file.name.replace(/\.[^/.]+$/, "");
                 if (this.noteTitle.value === "新規の暗記ノート") {
-                    this.noteTitle.value = file.name.replace(/\.[^/.]+$/, "");
+                    this.noteTitle.value = this.pdfFileName;
                 }
 
                 if (file.type === "application/pdf") {
                     this.processPDFFile(file);
                 } else {
+                    this.pdfPageControls.classList.add('hidden'); // 通常画像なら非表示
                     this.processImageFile(file);
                 }
             }
 
-            // 📄 PDFファイルを画像化してCanvasに描画するロジック
+            // 📄 PDFファイルをロードし、全ページ数を解析
             processPDFFile(file) {
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     try {
                         const typedarray = new Uint8Array(event.target.result);
-                        // PDFのロード
-                        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
-                        // 最初のページを取得
-                        const page = await pdf.getPage(1);
+                        this.pdfDoc = await pdfjsLib.getDocument({ data: typedarray }).promise;
+                        this.pdfCurrentPage = 1;
                         
-                        // 文字がボケないように2倍のスケールで初期レンダリング
-                        const baseViewport = page.getViewport({ scale: 2.0 });
+                        this.lblTotalPages.innerText = this.pdfDoc.numPages;
                         
-                        const MAX_WIDTH = 1200;
-                        let width = baseViewport.width;
-                        let height = baseViewport.height;
-
-                        if (width > MAX_WIDTH) {
-                            height = Math.round((height * MAX_WIDTH) / width);
-                            width = MAX_WIDTH;
+                        // 2ページ以上ある場合のみ操作パネルを表示
+                        if (this.pdfDoc.numPages > 1) {
+                            this.pdfPageControls.classList.remove('hidden');
+                        } else {
+                            this.pdfPageControls.classList.add('hidden');
                         }
 
-                        this.origCanvas.width = width;
-                        this.origCanvas.height = height;
-
-                        // Canvasの幅に合わせて正確な比率のViewportを設定
-                        const finalScale = width / page.getViewport({ scale: 1.0 }).width;
-                        const finalViewport = page.getViewport({ scale: finalScale });
-
-                        const ctx = this.origCanvas.getContext('2d');
-                        const renderContext = {
-                            canvasContext: ctx,
-                            viewport: finalViewport
-                        };
-                        
-                        // PDFの内容をCanvasへレンダリング
-                        await page.render(renderContext).promise;
+                        // 初期ページの描画
+                        await this.renderPdfPage(this.pdfCurrentPage);
 
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
-
-                        this.onColorSelect();
                     } catch (error) {
                         console.error(error);
-                        alert("PDFの読み込みに失敗しました。暗号化されたファイルでないかご確認ください。");
+                        alert("PDFの読み込みに失敗しました。");
                     }
                 };
                 reader.readAsArrayBuffer(file);
             }
 
-            // 🖼️ 従来の画像ファイルを処理するロジック
+            // 📄 指定されたPDFページをCanvasにレンダリングする共通メソッド
+            async renderPdfPage(pageNumber) {
+                if (!this.pdfDoc) return;
+
+                const page = await this.pdfDoc.getPage(pageNumber);
+                const baseViewport = page.getViewport({ scale: 2.0 }); // 高解像度レンダリング
+                
+                const MAX_WIDTH = 1200;
+                let width = baseViewport.width;
+                let height = baseViewport.height;
+
+                if (width > MAX_WIDTH) {
+                    height = Math.round((height * MAX_WIDTH) / width);
+                    width = MAX_WIDTH;
+                }
+
+                this.origCanvas.width = width;
+                this.origCanvas.height = height;
+
+                const finalScale = width / page.getViewport({ scale: 1.0 }).width;
+                const finalViewport = page.getViewport({ scale: finalScale });
+
+                const ctx = this.origCanvas.getContext('2d');
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: finalViewport
+                };
+                
+                await page.render(renderContext).promise;
+
+                // UI表示の更新
+                this.lblCurrentPage.innerText = pageNumber;
+                this.btnPrevPage.disabled = (pageNumber <= 1);
+                this.btnNextPage.disabled = (pageNumber >= this.pdfDoc.numPages);
+
+                // 複数ページの場合は自動で「ファイル名_pページ数」をタイトルにする
+                if (this.pdfDoc.numPages > 1) {
+                    this.noteTitle.value = `${this.pdfFileName}_p${pageNumber}`;
+                }
+
+                // 新しいページが描画されたのでマスク処理を自動実行
+                this.onColorSelect();
+            }
+
+            // 📄 ページ変更ボタンがクリックされた時の処理
+            async changePdfPage(offset) {
+                const nextPage = this.pdfCurrentPage + offset;
+                if (nextPage < 1 || nextPage > this.pdfDoc.numPages) return;
+
+                this.pdfCurrentPage = nextPage;
+                await this.renderPdfPage(this.pdfCurrentPage);
+            }
+
             processImageFile(file) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
