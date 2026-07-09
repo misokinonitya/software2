@@ -417,8 +417,8 @@
                 });
 
                 // ズームボタンイベント
-                this.btnZoomIn.addEventListener('click', () => this.changeZoom(0.2));
-                this.btnZoomOut.addEventListener('click', () => this.changeZoom(-0.2));
+                this.btnZoomIn.addEventListener('click', () => this.changeZoom(0.1));
+                this.btnZoomOut.addEventListener('click', () => this.changeZoom(-0.1));
                 this.btnZoomReset.addEventListener('click', () => this.resetZoom());
             }
 
@@ -426,17 +426,23 @@
             changeZoom(delta) {
                 if (this.canvasWrapper.classList.contains('hidden')) return;
 
-                // 最初は全体表示からスタートするため、カスタム倍率へ切り替える
                 if (this.isZoomFit) {
+
+                    // 全体表示中は縮小できない
+                    if (delta < 0) return;
+
                     this.isZoomFit = false;
                     this.canvasWrapper.classList.remove('zoom-fit');
                     this.canvasWrapper.classList.add('zoom-custom');
+
+                    // 最初の拡大は110%
                     this.zoomLevel = 1.0;
                 }
 
-                // 最小40% 〜 最大300% までの制限
-                this.zoomLevel = Math.max(0.4, Math.min(3.0, this.zoomLevel + delta));
+                this.zoomLevel = Math.max(1.0, Math.min(3.0, this.zoomLevel + delta));
+
                 this.applyZoom();
+                this.updateZoomButtons();
             }
 
             resetZoom() {
@@ -446,6 +452,7 @@
                 this.canvasWrapper.classList.add('zoom-fit');
                 this.origCanvas.style.width = 'auto';
                 if (this.zoomLabel) this.zoomLabel.innerText = "全体";
+                this.updateZoomButtons();
             }
 
             applyZoom() {
@@ -457,6 +464,16 @@
                 
                 this.origCanvas.style.width = `${targetWidth}px`;
                 this.zoomLabel.innerText = `${Math.round(this.zoomLevel * 100)}%`;
+                this.updateZoomButtons();
+            }
+            updateZoomButtons() {
+                if (this.isZoomFit) {
+                    this.btnZoomOut.disabled = true;
+                    this.btnZoomOut.classList.add("opacity-40", "cursor-not-allowed");
+                } else {
+                    this.btnZoomOut.disabled = false;
+                    this.btnZoomOut.classList.remove("opacity-40", "cursor-not-allowed");
+                }
             }
 
             renderList() {
@@ -513,6 +530,7 @@
                     this.noteGrid.appendChild(card);
                 });
             }
+            
 
             openEditScreen(note = null) {
                 this.screenEdit.classList.remove('hidden');
