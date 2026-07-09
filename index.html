@@ -446,13 +446,14 @@
             }
 
             resetZoom() {
-                this.isZoomFit = true;
+                this.isZoomFit = false;
                 this.zoomLevel = 1.0;
-                this.canvasWrapper.classList.remove('zoom-custom');
-                this.canvasWrapper.classList.add('zoom-fit');
-                this.origCanvas.style.width = 'auto';
-                if (this.zoomLabel) this.zoomLabel.innerText = "全体";
+                this.canvasWrapper.classList.remove('zoom-fit');
+                this.canvasWrapper.classList.add('zoom-custom');
+                
+                if (this.zoomLabel) this.zoomLabel.innerText = "100%";
                 this.updateZoomButtons();
+                this.applyZoom();
             }
 
             applyZoom() {
