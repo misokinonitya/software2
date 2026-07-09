@@ -9,19 +9,12 @@
     <style>
         .canvas-container {
             position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            max-width: 100%;
-            max-height: 65vh;
             margin: 0 auto;
+            display: block;
         }
         #originalCanvas {
-            max-width: 100%;
-            max-height: 65vh;
-            width: auto;
-            height: auto;
             display: block;
+            margin: 0 auto;
             object-fit: contain;
         }
         #maskCanvas {
@@ -31,6 +24,20 @@
             width: 100%;
             height: 100%;
             cursor: pointer;
+        }
+        
+        /* 全体表示モード（初期状態） */
+        .zoom-fit #originalCanvas {
+            max-width: 100%;
+            max-height: 65vh;
+            width: auto;
+            height: auto;
+        }
+        
+        /* 拡大モード（制限を解除して自由スクロール） */
+        .zoom-custom #originalCanvas {
+            max-width: none;
+            max-height: none;
         }
     </style>
 </head>
@@ -51,8 +58,7 @@
             <h2 class="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
                 🗂 保存されたノート一覧
             </h2>
-            <div id="noteGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                </div>
+            <div id="noteGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
             <div id="emptyState" class="hidden text-center py-12 text-slate-400">
                 <p class="text-4xl mb-2">📸</p>
                 <p>保存されたノートがありません。「新規ノート」から作成してください。</p>
@@ -113,22 +119,32 @@
                             <p>① ファイルを選び、消したい色を指定します。</p>
                             <p>② 指定した色の文字が白く隠れます。</p>
                             <p>③ 消えた部分をタップすると、その文字が一時的に<span class="text-indigo-600 font-bold">再表示</span>されます！</p>
+                            <p class="mt-2 text-slate-500">※ 文字が小さい時は、右上のボタンで拡大してスクロールしてください。</p>
                         </div>
                     </div>
 
                     <div class="flex-1 flex flex-col gap-2">
-                        <div id="pdfControls" class="hidden flex justify-between items-center bg-slate-200 px-3 py-2 rounded-lg text-sm shadow-inner">
-                            <button id="btnPrevPdf" class="px-3 py-1 bg-white rounded shadow hover:bg-slate-50 disabled:opacity-50 font-bold text-slate-700">◀ 前のページ</button>
-                            <span class="font-medium text-slate-600">ページ: <span id="pageNum" class="font-bold text-indigo-600">1</span> / <span id="pageCount">?</span></span>
-                            <button id="btnNextPdf" class="px-3 py-1 bg-white rounded shadow hover:bg-slate-50 disabled:opacity-50 font-bold text-slate-700">次のページ ▶</button>
+                        <div id="viewControls" class="hidden flex flex-wrap justify-between items-center bg-slate-200 px-3 py-1.5 rounded-lg text-sm shadow-inner gap-2">
+                            <div id="pdfControls" class="hidden flex items-center gap-2">
+                                <button id="btnPrevPdf" class="px-2.5 py-1 bg-white rounded shadow hover:bg-slate-50 disabled:opacity-50 font-bold text-slate-700 text-xs">◀ 前ページ</button>
+                                <span class="font-medium text-slate-600 text-xs">ページ: <span id="pageNum" class="font-bold text-indigo-600">1</span> / <span id="pageCount">?</span></span>
+                                <button id="btnNextPdf" class="px-2.5 py-1 bg-white rounded shadow hover:bg-slate-50 disabled:opacity-50 font-bold text-slate-700 text-xs">次ページ ▶</button>
+                            </div>
+                            
+                            <div class="flex items-center gap-1 bg-slate-300/50 p-1 rounded-md ml-auto">
+                                <button id="btnZoomOut" class="px-2 py-0.5 bg-white rounded shadow hover:bg-slate-50 font-bold text-slate-700 text-xs">🔍➖ 縮小</button>
+                                <span id="zoomLabel" class="text-xs font-bold text-slate-600 min-w-[50px] text-center">全体</span>
+                                <button id="btnZoomIn" class="px-2 py-0.5 bg-white rounded shadow hover:bg-slate-50 font-bold text-slate-700 text-xs">🔍➕ 拡大</button>
+                                <button id="btnZoomReset" class="px-2 py-0.5 bg-white rounded shadow hover:bg-slate-50 text-slate-700 text-xs">全体表示</button>
+                            </div>
                         </div>
 
-                        <div class="flex-1 min-h-[350px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 overflow-hidden relative">
-                            <div id="canvasWrapper" class="canvas-container hidden">
+                        <div class="flex-1 min-h-[350px] max-h-[65vh] bg-slate-100 rounded-xl border border-slate-200 overflow-auto p-2 relative flex justify-center items-start">
+                            <div id="canvasWrapper" class="canvas-container hidden zoom-fit">
                                 <canvas id="originalCanvas"></canvas>
                                 <canvas id="maskCanvas"></canvas>
                             </div>
-                            <div id="canvasPlaceholder" class="text-slate-400 text-sm text-center">
+                            <div id="canvasPlaceholder" class="text-slate-400 text-sm text-center my-auto mx-auto">
                                 <p class="text-3xl mb-1">🖼️</p>
                                 <p>画像やPDFを選択すると表示されます</p>
                             </div>
@@ -192,7 +208,6 @@
         // --- 2. 画像処理エンジン（文字抹消＆輪郭膨張処理） ---
         class ImageProcessingEngine {
             static checkColor(r, g, b, targetColor) {
-                // 💡 「なにも消さない」場合は常にfalseを返す
                 if (targetColor === 'none') return false;
 
                 if (targetColor === 'red') {
@@ -218,7 +233,6 @@
                 const origCtx = originalCanvas.getContext('2d');
                 const maskCtx = maskCanvas.getContext('2d');
                 
-                // 「なにも消さない」場合は透明なキャンバスをそのまま返す
                 if (targetColor === 'none') return maskCanvas;
 
                 const imgData = origCtx.getImageData(0, 0, width, height);
@@ -334,6 +348,10 @@
                 this.currentPdfPage = 1;
                 this.isRendering = false;
 
+                // ズーム関連の状態
+                this.zoomLevel = 1.0;
+                this.isZoomFit = true;
+
                 this.initElements();
                 this.initEvents();
                 this.renderList();
@@ -358,12 +376,19 @@
                 this.origCanvas = document.getElementById('originalCanvas');
                 this.maskCanvas = document.getElementById('maskCanvas');
 
-                // PDF用の要素
+                // コントロール表示エリア
+                this.viewControls = document.getElementById('viewControls');
                 this.pdfControls = document.getElementById('pdfControls');
                 this.btnPrevPdf = document.getElementById('btnPrevPdf');
                 this.btnNextPdf = document.getElementById('btnNextPdf');
                 this.pageNumSpan = document.getElementById('pageNum');
                 this.pageCountSpan = document.getElementById('pageCount');
+
+                // ズームコントロール要素
+                this.btnZoomIn = document.getElementById('btnZoomIn');
+                this.btnZoomOut = document.getElementById('btnZoomOut');
+                this.btnZoomReset = document.getElementById('btnZoomReset');
+                this.zoomLabel = document.getElementById('zoomLabel');
             }
 
             initEvents() {
@@ -390,6 +415,48 @@
                     this.currentPdfPage++;
                     this.renderPdfPage(this.currentPdfPage);
                 });
+
+                // ズームボタンイベント
+                this.btnZoomIn.addEventListener('click', () => this.changeZoom(0.2));
+                this.btnZoomOut.addEventListener('click', () => this.changeZoom(-0.2));
+                this.btnZoomReset.addEventListener('click', () => this.resetZoom());
+            }
+
+            // 💡 ズーム制御処理
+            changeZoom(delta) {
+                if (this.canvasWrapper.classList.contains('hidden')) return;
+
+                // 最初は全体表示からスタートするため、カスタム倍率へ切り替える
+                if (this.isZoomFit) {
+                    this.isZoomFit = false;
+                    this.canvasWrapper.classList.remove('zoom-fit');
+                    this.canvasWrapper.classList.add('zoom-custom');
+                    this.zoomLevel = 1.0;
+                }
+
+                // 最小40% 〜 最大300% までの制限
+                this.zoomLevel = Math.max(0.4, Math.min(3.0, this.zoomLevel + delta));
+                this.applyZoom();
+            }
+
+            resetZoom() {
+                this.isZoomFit = true;
+                this.zoomLevel = 1.0;
+                this.canvasWrapper.classList.remove('zoom-custom');
+                this.canvasWrapper.classList.add('zoom-fit');
+                this.origCanvas.style.width = 'auto';
+                if (this.zoomLabel) this.zoomLabel.innerText = "全体";
+            }
+
+            applyZoom() {
+                if (this.isZoomFit) return;
+                
+                // PDF（高精細化で内部サイズ2倍）と 通常画像で基準論理サイズを分岐
+                const baseWidth = this.pdfDoc ? (this.origCanvas.width / 2) : this.origCanvas.width;
+                const targetWidth = baseWidth * this.zoomLevel;
+                
+                this.origCanvas.style.width = `${targetWidth}px`;
+                this.zoomLabel.innerText = `${Math.round(this.zoomLevel * 100)}%`;
             }
 
             renderList() {
@@ -450,8 +517,10 @@
             openEditScreen(note = null) {
                 this.screenEdit.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
-                this.pdfControls.classList.add('hidden'); // PDFコントロールを一旦隠す
+                this.viewControls.classList.add('hidden');
+                this.pdfControls.classList.add('hidden');
                 this.pdfDoc = null;
+                this.resetZoom();
 
                 if (note) {
                     this.currentNote = new Note(note.id, note.imageSrc, note.maskSrc, note.title, note.createdAt, note.hiddenColors);
@@ -477,21 +546,22 @@
                 this.currentNote = null;
                 this.baseMaskCanvas = null;
                 this.pdfDoc = null;
+                this.resetZoom();
             }
 
             clearWorkspace() {
                 this.canvasWrapper.classList.add('hidden');
                 this.canvasPlaceholder.classList.remove('hidden');
                 this.fileInput.value = '';
+                this.viewControls.classList.add('hidden');
                 this.pdfControls.classList.add('hidden');
+                this.resetZoom();
             }
 
-            // 💡 ファイル選択処理（画像とPDFで分岐）
             onFileSelected(e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                // PDFの場合
                 if (file.type === 'application/pdf') {
                     const reader = new FileReader();
                     reader.onload = (event) => {
@@ -500,9 +570,7 @@
                             this.pdfDoc = pdf;
                             this.currentPdfPage = 1;
                             this.pageCountSpan.innerText = pdf.numPages;
-                            this.pdfControls.classList.remove('hidden');
                             
-                            // 自動でタイトルをファイル名に設定
                             if(this.noteTitle.value === "新規の暗記ノート") {
                                 this.noteTitle.value = file.name.replace('.pdf', '');
                             }
@@ -512,9 +580,7 @@
                     };
                     reader.readAsArrayBuffer(file);
                 } 
-                // 画像の場合
                 else if (file.type.startsWith('image/')) {
-                    this.pdfControls.classList.add('hidden');
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         const img = new Image();
@@ -527,7 +593,6 @@
                 }
             }
 
-            // 💡 PDFページを描画する処理
             renderPdfPage(pageNum) {
                 if(this.isRendering) return;
                 this.isRendering = true;
@@ -537,8 +602,7 @@
                 this.btnNextPdf.disabled = pageNum >= this.pdfDoc.numPages;
 
                 this.pdfDoc.getPage(pageNum).then(page => {
-                    // 解像度を上げて描画（スマホやRetinaディスプレイで綺麗に見せるため）
-                    const scale = 2.0; 
+                    const scale = 2.0; // Retina/スマホ向けに解像度を2倍に維持
                     const viewport = page.getViewport({ scale: scale });
 
                     this.origCanvas.width = viewport.width;
@@ -553,15 +617,26 @@
                     page.render(renderContext).promise.then(() => {
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
-                        this.onColorSelect(); // 色の再評価
+                        
+                        // コントロール類の表示
+                        this.viewControls.classList.remove('hidden');
+                        this.pdfControls.classList.remove('hidden');
+                        
+                        this.onColorSelect(); 
+                        
+                        // ページ切り替え時に拡大率を維持するかリセットするか
+                        if (!this.isZoomFit) {
+                            this.applyZoom();
+                        } else {
+                            this.resetZoom();
+                        }
                         this.isRendering = false;
                     });
                 });
             }
 
-            // 画像を描画する処理（既存ロジックを分離）
             renderImageToCanvas(img) {
-                const MAX_WIDTH = 1200; // 以前より少し上限を上げて綺麗に
+                const MAX_WIDTH = 1200; 
                 let width = img.width;
                 let height = img.height;
 
@@ -577,8 +652,12 @@
 
                 this.canvasPlaceholder.classList.add('hidden');
                 this.canvasWrapper.classList.remove('hidden');
+                
+                this.viewControls.classList.remove('hidden');
+                this.pdfControls.classList.add('hidden'); // 画像なのでPDF操作は隠す
 
                 this.onColorSelect();
+                this.resetZoom();
             }
 
             onColorSelect() {
@@ -618,6 +697,10 @@
 
                         this.canvasPlaceholder.classList.add('hidden');
                         this.canvasWrapper.classList.remove('hidden');
+                        
+                        this.viewControls.classList.remove('hidden');
+                        this.pdfControls.classList.add('hidden');
+                        this.resetZoom();
                     };
                     mask.src = maskSrc;
                 };
@@ -626,12 +709,13 @@
 
             onMaskTap(e) {
                 const targetColor = document.querySelector('input[name="targetColor"]:checked').value;
-                if (targetColor === 'none') return; // なにも消さないモード時はクリック処理を無視
+                if (targetColor === 'none') return; 
 
                 const rect = this.maskCanvas.getBoundingClientRect();
                 const scaleX = this.maskCanvas.width / rect.width;
                 const scaleY = this.maskCanvas.height / rect.height;
 
+                // 💡 拡大されて表示サイズ(rect)が変わっても、これで正しい座標に自動変換されます
                 const clickX = Math.floor((e.clientX - rect.left) * scaleX);
                 const clickY = Math.floor((e.clientY - rect.top) * scaleY);
 
@@ -651,14 +735,13 @@
                     return;
                 }
 
-                // PDFの場合、タイトルにページ数を含めるとわかりやすい
                 let finalTitle = this.noteTitle.value.trim() || "無題のノート";
                 if(this.pdfDoc && finalTitle.indexOf('ページ') === -1) {
                      finalTitle += ` (P.${this.currentPdfPage})`;
                 }
 
                 this.currentNote.title = finalTitle;
-                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.85); // 画質を少し向上
+                this.currentNote.imageSrc = this.origCanvas.toDataURL('image/jpeg', 0.85); 
                 this.currentNote.maskSrc = this.maskCanvas.toDataURL('image/png');
 
                 Note.save(this.currentNote);
