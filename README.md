@@ -12,12 +12,11 @@
 
 ## 📐 設計ドキュメント (UML図)
 
-本アプリの設計構造を示すUML図です。
-
-### 1. ユースケース図 
-ユーザーがこのアプリを使って何ができるかを表現しています。
-
 ```mermaid
+---
+title: デジタル暗記ノートアプリ 設計図面集
+---
+🔲ユースケース図
 left-to-right-direction
 actor ユーザー as User
 
@@ -41,7 +40,7 @@ User --> UC_Delete
 
 UC_Create ..> UC_Upload : <<include>>
 
-### 2. クラス図
+🔲クラス図
 classDiagram
     class Note {
         +number id
@@ -85,22 +84,22 @@ classDiagram
     AppScreen --> Note : 管理・操作
     AppScreen ..> ImageProcessingEngine : マスク処理・タップ判定を依頼
 
-### 3.協調図
+🔲協調図 / コミュニケーション図
 graph TD
-    User((ユーザー))
+    User_Col((ユーザー))
     UI[AppScreen]
     Engine[ImageProcessingEngine]
     Model[Note]
     Storage[(localStorage)]
 
-    User -- "1. ファイル選択 / 色変更" --> UI
+    User_Col -- "1. ファイル選択 / 色変更" --> UI
     UI -- "2. マスク生成の要求 (generateMaskCanvas)" --> Engine
     Engine -. "3. 生成したマスクCanvasを返却" .-> UI
-    User -- "4. 保存ボタンを押す" --> UI
+    User_Col -- "4. 保存ボタンを押す" --> UI
     UI -- "5. 保存処理を要求 (save)" --> Model
     Model -- "6. JSONデータ書き込み" --> Storage
 
-### 4.状態遷移図
+🔲状態遷移図
 stateDiagram-v2
     [*] --> ノート一覧画面 : アプリ起動 (renderList)
 
@@ -127,4 +126,3 @@ stateDiagram-v2
     
     編集画面_新規 --> ノート一覧画面 : 保存ボタン押下 (Note.save)
     編集画面_既存 --> ノート一覧画面 : 保存ボタン押下 (Note.save)
-
